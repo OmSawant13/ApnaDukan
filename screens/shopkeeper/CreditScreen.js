@@ -1,0 +1,335 @@
+import React, { useState } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    FlatList,
+    TouchableOpacity,
+    StatusBar,
+    Modal,
+    TextInput,
+    KeyboardAvoidingView,
+    Platform
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+
+const INITIAL_USERS = [
+    { id: '1', name: 'Sharma Ji', due: 1200, lastDate: '2 Feb' },
+    { id: '2', name: 'Raju Mechanic', due: 450, lastDate: '1 Feb' },
+    { id: '3', name: 'Anjali Singh', due: 2100, lastDate: '30 Jan' },
+    { id: '4', name: 'Gupta Store', due: 5000, lastDate: '28 Jan' },
+];
+
+export default function ShopkeeperCreditScreen({ navigation }) {
+    const [users, setUsers] = useState(INITIAL_USERS);
+    const [isModalVisible, setModalVisible] = useState(false);
+    const [newName, setNewName] = useState('');
+    const [newPhone, setNewPhone] = useState('');
+    const [newDesc, setNewDesc] = useState('');
+    const [newAmount, setNewAmount] = useState('');
+
+    const handleAddUser = () => {
+        if (!newName.trim()) return;
+
+        const initialDue = newAmount ? parseFloat(newAmount) : 0;
+
+        const newUser = {
+            id: Date.now().toString(),
+            name: newName.trim(),
+            due: initialDue,
+            lastDate: 'Just now',
+            // In a real app, we would also add the transaction to history
+        };
+
+        setUsers([newUser, ...users]);
+
+        // Reset
+        setNewName('');
+        setNewPhone('');
+        setNewDesc('');
+        setNewAmount('');
+        setModalVisible(false);
+    };
+
+    const renderUser = ({ item }) => (
+        <TouchableOpacity
+            style={styles.userCard}
+            onPress={() => navigation.navigate('ShopkeeperCreditDetails', { userId: item.id, userName: item.name })}
+        >
+            <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{item.name[0]}</Text>
+            </View>
+            <View style={styles.userInfo}>
+                <Text style={styles.userName}>{item.name}</Text>
+                <Text style={styles.lastDate}>Last: {item.lastDate}</Text>
+            </View>
+            <View style={styles.dueInfo}>
+                <Text style={styles.dueLabel}>Due</Text>
+                <Text style={styles.dueAmount}>₹{item.due}</Text>
+            </View>
+        </TouchableOpacity>
+    );
+
+    return (
+        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+            <StatusBar barStyle="dark-content" />
+
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>Credit / Khata</Text>
+                <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
+                    <Ionicons name="person-add" size={24} color="#111827" />
+                </TouchableOpacity>
+            </View>
+
+            <View style={styles.summaryCard}>
+                <View style={styles.summaryItem}>
+                    <Text style={styles.summaryLabel}>Total Due</Text>
+                    <Text style={styles.summaryValue}>₹8,750</Text>
+                </View>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryItem}>
+                    <Text style={styles.summaryLabel}>Collected</Text>
+                    <Text style={styles.summaryValue}>₹12,400</Text>
+                </View>
+            </View>
+
+            <FlatList
+                data={users}
+                keyExtractor={item => item.id}
+                renderItem={renderUser}
+                contentContainerStyle={styles.list}
+                showsVerticalScrollIndicator={false}
+                ListEmptyComponent={
+                    <Text style={styles.emptyText}>No customers. Add one to start.</Text>
+                }
+            />
+
+            {/* Add Customer Modal */}
+            <Modal transparent visible={isModalVisible} animationType="slide" onRequestClose={() => setModalVisible(false)}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    style={styles.modalOverlay}
+                >
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Add New Customer</Text>
+                            <TouchableOpacity onPress={() => setModalVisible(false)}>
+                                <Ionicons name="close" size={24} color="#6B7280" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={styles.label}>Customer Name</Text>
+                        <TextInput
+                            placeholder="e.g. Rahul Kumar"
+                            value={newName}
+                            onChangeText={setNewName}
+                            style={styles.input}
+                            autoFocus
+                        />
+
+                        <Text style={styles.label}>Phone Number (Optional)</Text>
+                        <TextInput
+                            placeholder="Mobile Number"
+                            value={newPhone}
+                            onChangeText={setNewPhone}
+                            keyboardType="phone-pad"
+                            style={styles.input}
+                        />
+
+                        <Text style={styles.label}>First Purchase (Optional)</Text>
+                        <TextInput
+                            placeholder="e.g. Rice, Sugar (Saman)"
+                            value={newDesc}
+                            onChangeText={setNewDesc}
+                            style={styles.input}
+                        />
+
+                        <Text style={styles.label}>Initial Amount (₹)</Text>
+                        <TextInput
+                            placeholder="0"
+                            value={newAmount}
+                            onChangeText={setNewAmount}
+                            keyboardType="number-pad"
+                            style={[styles.input, { fontSize: 20, fontWeight: '700' }]}
+                        />
+
+                        <TouchableOpacity style={styles.saveBtn} onPress={handleAddUser}>
+                            <Text style={styles.saveText}>Add Customer</Text>
+                        </TouchableOpacity>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
+        </SafeAreaView>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#fff',
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+    },
+    headerTitle: {
+        fontSize: 28,
+        fontWeight: '800',
+        color: '#111827',
+        letterSpacing: -0.5
+    },
+    addBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    // PREMIUM DARK CARD
+    summaryCard: {
+        flexDirection: 'row',
+        marginHorizontal: 20,
+        marginBottom: 24,
+        padding: 24,
+        backgroundColor: '#111827',
+        borderRadius: 24,
+        shadowColor: '#111827',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 8,
+        alignItems: 'center'
+    },
+    summaryItem: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    summaryDivider: {
+        width: 1,
+        height: '80%',
+        backgroundColor: 'rgba(255,255,255,0.15)',
+    },
+    summaryLabel: {
+        fontSize: 12,
+        color: '#9CA3AF',
+        marginBottom: 8,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 1
+    },
+    summaryValue: {
+        fontSize: 26,
+        fontWeight: '800',
+        color: '#FFFFFF'
+    },
+
+    list: {
+        paddingHorizontal: 20,
+        paddingBottom: 40,
+    },
+    userCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+    },
+    avatar: {
+        width: 56,
+        height: 56,
+        borderRadius: 20,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    avatarText: {
+        fontSize: 22,
+        fontWeight: '800',
+        color: '#111827',
+    },
+    userInfo: {
+        flex: 1,
+        marginLeft: 20,
+    },
+    userName: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 4,
+    },
+    lastDate: {
+        fontSize: 13,
+        color: '#6B7280',
+        fontWeight: '500'
+    },
+    dueInfo: {
+        alignItems: 'flex-end',
+    },
+    dueLabel: {
+        fontSize: 11,
+        color: '#EF4444',
+        marginBottom: 4,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5
+    },
+    dueAmount: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#111827',
+    },
+    emptyText: {
+        textAlign: 'center',
+        marginTop: 40,
+        color: '#9CA3AF',
+        fontSize: 16
+    },
+
+    /* Modal Styles */
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+        padding: 24,
+        paddingBottom: 40,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    modalTitle: { fontSize: 20, fontWeight: '800', color: '#111827' },
+
+    label: { fontSize: 13, fontWeight: '700', color: '#4B5563', marginBottom: 8, textTransform: 'uppercase' },
+    input: {
+        backgroundColor: '#F9FAFB',
+        borderRadius: 16,
+        padding: 18,
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#111827',
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#E5E7EB'
+    },
+    saveBtn: {
+        backgroundColor: '#111827',
+        paddingVertical: 18,
+        borderRadius: 18,
+        alignItems: 'center',
+        marginTop: 8
+    },
+    saveText: { color: '#fff', fontSize: 18, fontWeight: '800' }
+});
