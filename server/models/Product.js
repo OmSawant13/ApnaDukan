@@ -4,40 +4,31 @@ const productSchema = new mongoose.Schema({
     name: {
         type: String,
         required: true,
-        trim: true
-    },
-    weight: {
-        type: String, // e.g., "1 kg", "500 gm"
-        required: true
     },
     price: {
         type: Number,
-        required: true
+        required: true,
     },
-    mrp: {
-        type: Number,
+    unit: {
+        type: String, // kg, litre, packet, dozen etc.
+        required: true,
     },
-    type: {
-        type: String,
-        enum: ['unit', 'weight'],
-        default: 'unit'
-    },
-    image: {
-        type: String, // URL or asset path
-    },
-    category: {
-        type: String,
-        default: 'General'
-    },
-    inStock: {
+    stock: {
         type: Boolean,
         default: true
     },
-    description: {
-        type: String
+    stockCount: {
+        type: Number,
+        default: 0
+    },
+    image: {
+        type: String, // URL or local path
+    },
+    categoryId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Category',
+        required: true,
     }
-}, {
-    timestamps: true
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model('Product', productSchema);

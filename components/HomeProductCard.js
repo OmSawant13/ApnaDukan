@@ -6,18 +6,26 @@ const { width } = Dimensions.get('window');
 // Card width = (Screen Width - Padding - Gap) / 2.5 items visible
 const CARD_WIDTH = width * 0.35;
 
-export default function HomeProductCard({ item, onPress, style, imageHeight = 80 }) { // Default to smaller image for Home
-    const [quantity, setQuantity] = useState(0);
+import { useOrders } from '../context/OrderContext';
+
+export default function HomeProductCard({ item, onPress, style, imageHeight = 80 }) {
+    const { cart, addToCart, removeFromCart, updateQuantity } = useOrders();
+
+    // Find if item is in cart
+    const cartItem = cart.find(c => c.id === item.id);
+    const quantity = cartItem ? cartItem.quantity : 0;
 
     const handleAdd = () => {
         if (item.type === 'weight') {
-            onPress();
+            onPress(); // Navigate to details for weight
         } else {
-            setQuantity(1);
+            addToCart(item);
         }
     };
-    const handleIncrement = () => setQuantity(prev => prev + 1);
-    const handleDecrement = () => setQuantity(prev => (prev > 1 ? prev - 1 : 0));
+
+    // Direct increment/decrement for card
+    const handleIncrement = () => addToCart(item);
+    const handleDecrement = () => updateQuantity(item.id, -1);
 
     return (
         <TouchableOpacity style={[styles.cardContainer, style]} onPress={onPress} activeOpacity={1}>
@@ -25,7 +33,7 @@ export default function HomeProductCard({ item, onPress, style, imageHeight = 80
             <View style={[styles.imageContainer, { height: imageHeight }]}>
                 {/* Replace with actual Image component later */}
                 {/* <Image source={{ uri: item.image }} style={styles.image} resizeMode="contain" /> */}
-                <Ionicons name="cube-outline" size={40} color="#cbd5e1" />
+                <Image source={item.image} style={styles.image} resizeMode="contain" />
             </View>
 
             {/* Details */}

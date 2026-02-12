@@ -10,7 +10,23 @@ import {
     Platform,
 } from "react-native";
 
-export default function Login() {
+import { useAuth } from '../context/AuthContext';
+import { useState } from 'react';
+
+export default function Login({ navigation }) {
+    const { login } = useAuth();
+    const [phone, setPhone] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleLogin = async () => {
+        if (!phone || !password) return;
+        setLoading(true);
+        const res = await login(phone, password);
+        setLoading(false);
+        // Navigation is handled automatically by AppNavigator based on user state
+    };
+
     return (
         <View style={styles.container}>
             <KeyboardAvoidingView
@@ -34,32 +50,33 @@ export default function Login() {
                         Log in to continue your fresh shopping.
                     </Text>
 
-                    <Text style={styles.label}>Email or Phone Number</Text>
+                    <Text style={styles.label}>Phone Number</Text>
                     <TextInput
-                        placeholder="Enter your email or phone"
+                        placeholder="Enter your phone (e.g. 9876543210)"
                         style={styles.input}
                         placeholderTextColor="#999"
+                        keyboardType="phone-pad"
+                        value={phone}
+                        onChangeText={setPhone}
                     />
 
-                    <View style={styles.passwordRow}>
-                        <Text style={styles.label}>Password</Text>
-                        <Text style={styles.forgot}>Forgot Password?</Text>
-                    </View>
-
+                    <Text style={styles.label}>Password</Text>
                     <TextInput
                         placeholder="Enter your password"
                         style={styles.input}
                         placeholderTextColor="#999"
                         secureTextEntry
+                        value={password}
+                        onChangeText={setPassword}
                     />
 
-                    <TouchableOpacity style={styles.button}>
-                        <Text style={styles.buttonText}>Login</Text>
+                    <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+                        <Text style={styles.buttonText}>{loading ? 'Logging in...' : 'Login'}</Text>
                     </TouchableOpacity>
 
                     <View style={styles.signupRow}>
                         <Text style={styles.signupText}>Don't have an account?</Text>
-                        <TouchableOpacity>
+                        <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
                             <Text style={styles.signupLink}>Sign Up</Text>
                         </TouchableOpacity>
                     </View>

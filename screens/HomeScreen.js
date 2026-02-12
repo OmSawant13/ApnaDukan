@@ -33,12 +33,13 @@ export default function HomeScreen({ navigation }) {
     const { products, categories } = useProducts();
 
     // --- Data Filtering Logic ---
+    const safeProducts = Array.isArray(products) ? products : [];
 
     // 1. You Might Need (Random/Mix of Veg & Fruits)
-    const featuredProducts = products.filter(p => (p.categoryId === '1' || p.categoryId === '2') && p.stock).slice(0, 5);
+    const featuredProducts = safeProducts.filter(p => (p.categoryId === '1' || p.categoryId === '2') && p.stock).slice(0, 5);
 
     // 2. Daily Use (Dairy & Bakery)
-    const dailyUseProducts = products.filter(p => (p.categoryId === '3' || p.categoryId === '4') && p.stock).map(p => ({
+    const dailyUseProducts = safeProducts.filter(p => (p.categoryId === '3' || p.categoryId === '4') && p.stock).map(p => ({
         ...p,
         weight: p.unit, // Map unit to weight for card compatibility
         bgColor: '#eff6ff',
@@ -46,7 +47,7 @@ export default function HomeScreen({ navigation }) {
     }));
 
     // 3. Snacks (Snacks Category)
-    const snacksProducts = products.filter(p => p.categoryId === '6' && p.stock).map(p => ({
+    const snacksProducts = safeProducts.filter(p => p.categoryId === '6' && p.stock).map(p => ({
         ...p,
         weight: p.unit,
         bgColor: '#fff7ed',
@@ -54,7 +55,7 @@ export default function HomeScreen({ navigation }) {
     }));
 
     // 4. Spices/Pulses (Spices Category)
-    const coursesProducts = products.filter(p => p.categoryId === '5' && p.stock).map(p => ({
+    const coursesProducts = safeProducts.filter(p => p.categoryId === '5' && p.stock).map(p => ({
         ...p,
         weight: p.unit,
         bgColor: '#fefce8',
@@ -118,9 +119,10 @@ export default function HomeScreen({ navigation }) {
                         <View style={styles.curveIconsContainer}>
                             {(() => {
                                 // 1. Get 2 Weight Categories
-                                const weightCats = categories.filter(c => c.type === 'weight').slice(0, 2);
+                                const safeCategories = Array.isArray(categories) ? categories : [];
+                                const weightCats = safeCategories.filter(c => c.type === 'weight').slice(0, 2);
                                 // 2. Get 2 Packet Categories (Unit)
-                                const packetCats = categories.filter(c => c.type === 'unit').slice(0, 2);
+                                const packetCats = safeCategories.filter(c => c.type === 'unit').slice(0, 2);
                                 // 3. Combine (Order: Weight, Weight, Pkt, Pkt or Interleaved)
                                 // Let's interleave: Weight, Pkt, Weight, Pkt
                                 const curveData = [];
@@ -200,19 +202,25 @@ export default function HomeScreen({ navigation }) {
                             showsHorizontalScrollIndicator={false}
                             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
                         >
-                            {CATEGORY_SHOWCASE.map((item) => (
+                            {categories.length > 0 ? categories.slice(0, 6).map((item) => (
                                 <CategoryShowcaseCard
                                     key={item.id}
-                                    title={item.title}
-                                    subtitle={item.subtitle}
-                                    tag={item.tag}
-                                    icon={item.icon}
-                                    image={item.image}
-                                    color={item.color}
-                                    bgColor={item.bgColor}
-                                    onPress={() => console.log('Category Selected:', item.title)}
+                                    title={item.name}
+                                    subtitle={item.type === 'weight' ? 'Fresh Stock' : 'Best Sellers'}
+                                    tag="Explore"
+                                    // icon={item.icon}
+                                    image={require('../assets/images/spices_v3.png')} // Fallback or map specific images if available
+                                    color={item.type === 'weight' ? '#059669' : '#db2777'}
+                                    bgColor={item.type === 'weight' ? '#ecfdf5' : '#fce7f3'}
+                                    onPress={() => navigation.navigate('CategoryProducts', {
+                                        categoryId: item.id,
+                                        categoryName: item.name,
+                                        categoryType: item.type
+                                    })}
                                 />
-                            ))}
+                            )) : (
+                                <Text style={{ marginLeft: 20, color: '#9ca3af' }}>Add categories in Shopkeeper mode</Text>
+                            )}
                         </ScrollView>
                     </View>
 

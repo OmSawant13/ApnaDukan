@@ -87,20 +87,54 @@ function MainTabs() {
     );
 }
 
+import { useAuth } from '../context/AuthContext';
+import OnboardingScreen from '../screens/OnboardingScreen';
+import LoginScreen from '../screens/Login';
+import SignupScreen from '../screens/SignupScreen';
+
+// ... (Existing Imports)
+
+// Auth Stack Config
+const AuthStack = () => (
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Signup" component={SignupScreen} />
+    </Stack.Navigator>
+);
+
+// Main App Stack Config
+const AppStack = () => (
+    <Stack.Navigator initialRouteName="MainTabs" screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+        <Stack.Screen name="MainTabs" component={MainTabs} />
+        <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
+        <Stack.Screen name="WeightProductDetails" component={WeightProductDetailsScreen} />
+        <Stack.Screen name="CategoryProducts" component={CategoryProductsScreen} />
+        <Stack.Screen name="Cart" component={CartScreen} />
+        <Stack.Screen name="Shopkeeper" component={ShopkeeperNavigator} />
+        <Stack.Screen name="ShopkeeperOrderDetails" component={ShopkeeperOrderDetailsScreen} />
+        <Stack.Screen name="ShopkeeperProductList" component={ShopkeeperProductListScreen} />
+        <Stack.Screen name="ShopkeeperAddProduct" component={ShopkeeperAddProductScreen} />
+        <Stack.Screen name="ShopkeeperProductDetails" component={ShopkeeperProductDetailsScreen} />
+        <Stack.Screen name="ShopkeeperCreditDetails" component={ShopkeeperCreditDetailsScreen} />
+    </Stack.Navigator>
+);
+
 export default function AppNavigator() {
+    const { user, loading } = useAuth();
+
+    if (loading) {
+        // You could return a Splash Screen here
+        return <View style={{ flex: 1, backgroundColor: '#fff' }} />;
+    }
+
     return (
-        <Stack.Navigator key="reset-live-v1" initialRouteName="MainTabs" screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
-            <Stack.Screen name="MainTabs" component={MainTabs} />
-            <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
-            <Stack.Screen name="WeightProductDetails" component={WeightProductDetailsScreen} />
-            <Stack.Screen name="CategoryProducts" component={CategoryProductsScreen} />
-            <Stack.Screen name="Cart" component={CartScreen} />
-            <Stack.Screen name="Shopkeeper" component={ShopkeeperNavigator} />
-            <Stack.Screen name="ShopkeeperOrderDetails" component={ShopkeeperOrderDetailsScreen} />
-            <Stack.Screen name="ShopkeeperProductList" component={ShopkeeperProductListScreen} />
-            <Stack.Screen name="ShopkeeperAddProduct" component={ShopkeeperAddProductScreen} />
-            <Stack.Screen name="ShopkeeperProductDetails" component={ShopkeeperProductDetailsScreen} />
-            <Stack.Screen name="ShopkeeperCreditDetails" component={ShopkeeperCreditDetailsScreen} />
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            {user ? (
+                <Stack.Screen name="App" component={AppStack} />
+            ) : (
+                <Stack.Screen name="Auth" component={AuthStack} />
+            )}
         </Stack.Navigator>
     );
 }

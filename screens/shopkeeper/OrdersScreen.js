@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,30 +6,42 @@ import {
   FlatList,
   TouchableOpacity,
   StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-
-const DUMMY_ORDERS = [
-  { id: '1', customer: 'Raju Bhai', price: 450, time: '10:30 AM', status: 'open', items: 3 },
-  { id: '2', customer: 'Priya Sharma', price: 120, time: '11:15 AM', status: 'open', items: 1 },
-  { id: '3', customer: 'Amit Kumar', price: 890, time: '09:45 AM', status: 'completed', items: 5 },
-  { id: '4', customer: 'Sneha Gupta', price: 340, time: 'Yesterday', status: 'completed', items: 2 },
-];
+import { useOrders } from '../../context/OrderContext';
+import { useIsFocused } from '@react-navigation/native';
 
 export default function ShopkeeperOrdersScreen({ navigation }) {
+  const { orders, fetchOrders, updateOrderStatus, loading } = useOrders();
   const [activeTab, setActiveTab] = useState('open');
+  const isFocused = useIsFocused();
 
-  const filteredOrders = DUMMY_ORDERS.filter(
+  useEffect(() => {
+    if (isFocused) {
+      fetchOrders();
+    }
+  }, [isFocused]);
+
+  const onRefresh = () => {
+    fetchOrders();
+  };
+
+  const filteredOrders = orders.filter(
     order => order.status === activeTab
   );
+
+  const handleMarkPacked = (orderId) => {
+    updateOrderStatus(orderId, 'completed');
+  };
 
   const renderOrder = ({ item }) => (
     <TouchableOpacity
       activeOpacity={0.85}
       style={styles.orderCard}
       onPress={() =>
-        navigation.navigate('ShopkeeperOrderDetails', { orderId: item.id })
+        navigation.navigate('ShopkeeperOrderDetails', { orderId: item._id }) // Use _id from Mongo
       }
     >
       {/* Accent Line */}
@@ -43,11 +55,11 @@ export default function ShopkeeperOrdersScreen({ navigation }) {
       <View style={styles.orderHeader}>
         <View>
           <Text style={styles.customerName}>{item.customer}</Text>
-          <Text style={styles.timeText}>{item.time}</Text>
+          <Text style={styles.timeText}>{new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
         </View>
 
         <View style={styles.priceContainer}>
-          <Text style={styles.orderPrice}>₹{item.price}</Text>
+          <Text style={styles.orderPrice}>₹{item.totalAmount}</Text>
           <View
             style={[
               styles.statusBadge,
@@ -65,12 +77,16 @@ export default function ShopkeeperOrdersScreen({ navigation }) {
 
       <View style={styles.orderDetails}>
         <Ionicons name="cube-outline" size={14} color="#6B7280" />
-        <Text style={styles.detailText}>{item.items} Items</Text>
+        <Text style={styles.detailText}>{item.items.length} Items</Text>
       </View>
 
       {activeTab === 'open' && (
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            activeOpacity={0.8}
+            onPress={() => handleMarkPacked(item._id)}
+          >
             <Ionicons name="checkmark-done" size={16} color="#fff" />
             <Text style={styles.actionText}>Mark Packed</Text>
           </TouchableOpacity>
@@ -122,10 +138,11 @@ export default function ShopkeeperOrdersScreen({ navigation }) {
 
       <FlatList
         data={filteredOrders}
-        keyExtractor={item => item.id}
+        keyExtractor={item => item._id}
         renderItem={renderOrder}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="receipt-outline" size={48} color="#D1D5DB" />

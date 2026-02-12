@@ -7,12 +7,26 @@ import {
     Image,
     TouchableOpacity,
     ScrollView,
-    Platform
+    Platform,
+    Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAuth } from '../context/AuthContext';
 
 export default function ProfileScreen({ navigation }) {
+    const { user, logout } = useAuth();
+
+    const handleLogout = () => {
+        Alert.alert(
+            'Logout',
+            'Are you sure you want to log out?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Logout', style: 'destructive', onPress: logout }
+            ]
+        );
+    };
 
     const USER_STATS = {
         totalOrders: 12,
@@ -48,9 +62,9 @@ export default function ProfileScreen({ navigation }) {
                             </View>
                         </View>
 
-                        <Text style={styles.userName}>Om Sawant</Text>
-                        <Text style={styles.userEmail}>omsawant@example.com</Text>
-                        <Text style={styles.userPhone}>+91 98765 43210</Text>
+                        <Text style={styles.userName}>{user?.name || 'Guest User'}</Text>
+                        <Text style={styles.userEmail}>{user?.email || 'No Email Linked'}</Text>
+                        <Text style={styles.userPhone}>{user?.phone || '+91 -'}</Text>
                     </View>
                 </LinearGradient>
             </View>
@@ -125,7 +139,7 @@ export default function ProfileScreen({ navigation }) {
                 </View>
 
                 {/* LOGOUT */}
-                <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.7}>
+                <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.7} onPress={handleLogout}>
                     <Text style={styles.logoutText}>Log Out</Text>
                 </TouchableOpacity>
 

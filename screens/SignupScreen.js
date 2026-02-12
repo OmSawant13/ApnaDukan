@@ -1,13 +1,32 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  Alert
 } from "react-native";
+import { useAuth } from '../context/AuthContext';
 
-export default function SignupScreen() {
+export default function SignupScreen({ navigation }) {
+  const { signup } = useAuth();
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSignup = async () => {
+    if (!name || !phone || !password) {
+      Alert.alert('Error', 'Please fill all fields');
+      return;
+    }
+    setLoading(true);
+    const res = await signup(name, phone, password);
+    setLoading(false);
+    // Navigation handled by AppNavigator
+  };
+
   return (
     <View style={styles.container}>
       {/* Heading */}
@@ -19,30 +38,34 @@ export default function SignupScreen() {
       {/* Full Name */}
       <Text style={styles.label}>Full Name</Text>
       <TextInput
-        placeholder="Kinjal Gawali"
+        placeholder="Enter your name"
         placeholderTextColor="#9ca3af"
         style={styles.input}
+        value={name}
+        onChangeText={setName}
       />
 
-      {/* Email */}
-      <Text style={styles.label}>Email Address</Text>
+      {/* Phone */}
+      <Text style={styles.label}>Phone Number</Text>
       <TextInput
-        placeholder="kinjal@example.com"
+        placeholder="Enter your phone"
         placeholderTextColor="#9ca3af"
         style={styles.input}
+        keyboardType="phone-pad"
+        value={phone}
+        onChangeText={setPhone}
       />
 
       {/* Password */}
       <Text style={styles.label}>Password</Text>
-      <View style={styles.passwordBox}>
-        <TextInput
-          placeholder="••••••••"
-          placeholderTextColor="#9ca3af"
-          secureTextEntry
-          style={styles.passwordInput}
-        />
-        <Text style={styles.eye}>👁</Text>
-      </View>
+      <TextInput
+        placeholder="Create a password"
+        placeholderTextColor="#9ca3af"
+        style={styles.input}
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+      />
 
       {/* Terms */}
       <Text style={styles.terms}>
@@ -52,23 +75,16 @@ export default function SignupScreen() {
       </Text>
 
       {/* Button */}
-      <TouchableOpacity style={styles.button}>
-        <Text style={styles.buttonText}>Create Account</Text>
+      <TouchableOpacity style={styles.button} onPress={handleSignup} disabled={loading}>
+        <Text style={styles.buttonText}>{loading ? 'Creating Account...' : 'Create Account'}</Text>
       </TouchableOpacity>
 
-      {/* Divider */}
-      <View style={styles.dividerRow}>
-        <View style={styles.line} />
-        <Text style={styles.or}>or</Text>
-        <View style={styles.line} />
-      </View>
-
-      
-
       {/* Footer */}
-      <Text style={styles.footer}>
-        Already have an account? <Text style={styles.link}>Log In</Text>
-      </Text>
+      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+        <Text style={styles.footer}>
+          Already have an account? <Text style={styles.link}>Log In</Text>
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -79,7 +95,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f9faf7",
     padding: 24,
     // marginTop: 60,
-    
+
   },
 
   heading: {
@@ -113,27 +129,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
 
-  passwordBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#d1fae5",
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    marginBottom: 20,
-    backgroundColor: "#fff",
-  },
-
-  passwordInput: {
-    flex: 1,
-    paddingVertical: 14,
-  },
-
-  eye: {
-    fontSize: 16,
-    color: "#6b7280",
-  },
-
   terms: {
     fontSize: 13,
     color: "#6b7280",
@@ -159,46 +154,10 @@ const styles = StyleSheet.create({
     color: "#000",
   },
 
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 25,
-  },
-
-  line: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#e5e7eb",
-  },
-
-  or: {
-    marginHorizontal: 12,
-    color: "#9ca3af",
-    fontSize: 14,
-  },
-
-  socialRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 16,
-    marginBottom: 30,
-  },
-
-  socialBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: "#d1fae5",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#fff",
-  },
-
   footer: {
     textAlign: "center",
     fontSize: 14,
     color: "#6b7280",
   },
 });
-    
+

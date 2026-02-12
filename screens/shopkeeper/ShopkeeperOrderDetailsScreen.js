@@ -1,23 +1,59 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-
-const ORDER_ITEMS = [
-    { id: '1', name: 'Toor Dal', weight: '1 kg', price: 140, quantity: 1 },
-    { id: '2', name: 'Brown Bread', weight: '400 gm', price: 40, quantity: 2 },
-    { id: '3', name: 'Amul Butter', weight: '100 gm', price: 56, quantity: 1 },
-];
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, Modal } from 'react-native';
+import { useOrders } from '../../context/OrderContext';
+import { useCredit } from '../../context/CreditContext';
 
 export default function ShopkeeperOrderDetailsScreen({ route, navigation }) {
-    // const { orderId } = route.params || {}; 
-    const orderTotal = 276;
+    const { orderId } = route.params || {};
+    const { orders, updateOrderStatus } = useOrders();
+    const { customers, addOrderToCredit } = useCredit();
+
+    const [isCreditModalVisible, setCreditModalVisible] = useState(false);
+
+    const order = orders.find(o => o._id === orderId);
+
+    if (!order) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <Ionicons name="arrow-back" size={24} color="#111827" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Order Not Found</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
+
+    const handleMarkCompleted = () => {
+        updateOrderStatus(order._id, 'completed');
+        navigation.goBack();
+    };
+
+    const handleAddToCredit = async (customerId) => {
+        await addOrderToCredit(customerId, order._id, order.totalAmount);
+        setCreditModalVisible(false);
+        handleMarkCompleted();
+    };
+
+    const renderCustomer = ({ item }) => (
+        <TouchableOpacity style={styles.customerRow} onPress={() => handleAddToCredit(item._id)}>
+            <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{item.name[0]?.toUpperCase()}</Text>
+            </View>
+            <View>
+                <Text style={styles.cName}>{item.name}</Text>
+                <Text style={styles.cUsage}>Balance: ₹{item.balance}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+        </TouchableOpacity>
+    );
 
     const renderItem = ({ item }) => (
         <View style={styles.itemRow}>
             <View style={styles.itemInfo}>
                 <Text style={styles.itemName}>{item.name}</Text>
-                <Text style={styles.itemWeight}>{item.subtitle || item.weight} x {item.quantity}</Text>
+                <Text style={styles.itemWeight}>{item.unit} x {item.quantity}</Text>
             </View>
             <Text style={styles.itemPrice}>₹{item.price * item.quantity}</Text>
         </View>
@@ -29,48 +65,78 @@ export default function ShopkeeperOrderDetailsScreen({ route, navigation }) {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
                     <Ionicons name="arrow-back" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Order #101</Text>
+                <Text style={styles.headerTitle}>Order #{order._id.slice(-4)}</Text>
                 <View style={{ width: 40 }} />
             </View>
 
             <ScrollView contentContainerStyle={styles.content}>
                 <View style={styles.customerCard}>
                     <Text style={styles.label}>Customer</Text>
-                    <Text style={styles.customerName}>Raju Bhai</Text>
-                    <Text style={styles.time}>Today, 10:30 AM</Text>
+                    <Text style={styles.customerName}>{order.customer}</Text>
+                    <Text style={styles.time}>{new Date(order.createdAt).toLocaleString()}</Text>
                 </View>
 
                 <View style={styles.itemList}>
                     <Text style={styles.sectionTitle}>Items</Text>
                     <FlatList
-                        data={ORDER_ITEMS}
-                        keyExtractor={item => item.id}
+                        data={order.items}
+                        keyExtractor={item => item.productId || Math.random().toString()}
                         renderItem={renderItem}
                         scrollEnabled={false}
                     />
                     <View style={styles.divider} />
                     <View style={styles.totalRow}>
                         <Text style={styles.totalLabel}>Total Amount</Text>
-                        <Text style={styles.totalValue}>₹{orderTotal}</Text>
+                        <Text style={styles.totalValue}>₹{order.totalAmount}</Text>
                     </View>
                 </View>
 
+                {/* Optional Note - Backend doesn't have note field yet, using placeholder or could add later */}
                 <View style={styles.noteContainer}>
-                    <Text style={styles.noteLabel}>Note</Text>
-                    <Text style={styles.noteText}>"Please pack in separate bags."</Text>
+                    <Text style={styles.noteLabel}>Status</Text>
+                    <Text style={[styles.noteText, { color: order.status === 'open' ? '#059669' : '#4B5563' }]}>
+                        {order.status.toUpperCase()}
+                    </Text>
                 </View>
             </ScrollView>
 
             <View style={styles.footer}>
-                <TouchableOpacity style={styles.creditBtn} onPress={() => navigation.navigate('ShopkeeperCreditDetails')}>
+                <TouchableOpacity style={styles.creditBtn} onPress={() => setCreditModalVisible(true)}>
                     <Ionicons name="book-outline" size={20} color="#111827" />
                     <Text style={styles.creditText}>Add to Credit</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.finishBtn} onPress={() => navigation.goBack()}>
-                    <Text style={styles.finishText}>Mark Completed</Text>
-                    <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                </TouchableOpacity>
+
+                {order.status === 'open' && (
+                    <TouchableOpacity style={styles.finishBtn} onPress={handleMarkCompleted}>
+                        <Text style={styles.finishText}>Mark Completed</Text>
+                        <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                    </TouchableOpacity>
+                )}
             </View>
+            {/* Select Customer Modal */}
+            <Modal transparent visible={isCreditModalVisible} animationType="slide" onRequestClose={() => setCreditModalVisible(false)}>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Select Customer</Text>
+                            <TouchableOpacity onPress={() => setCreditModalVisible(false)}>
+                                <Ionicons name="close" size={24} color="#6B7280" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <FlatList
+                            data={customers}
+                            keyExtractor={item => item._id}
+                            renderItem={renderCustomer}
+                            style={{ maxHeight: 400 }}
+                            showsVerticalScrollIndicator={false}
+                            ListEmptyComponent={
+                                <Text style={styles.emptyText}>No customers found. Add one in Credit Tab.</Text>
+                            }
+                        />
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }

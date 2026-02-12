@@ -12,9 +12,10 @@ import {
 
 const { width, height } = Dimensions.get('window');
 
-const OnboardingScreen = () => {
+const OnboardingScreen = ({ navigation }) => {
   const scrollViewRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAutoSliding, setIsAutoSliding] = useState(true);
 
   const slides = [
     {
@@ -43,21 +44,37 @@ const OnboardingScreen = () => {
     },
   ];
 
+  // Auto-Sliding Logic
+  React.useEffect(() => {
+    let interval;
+    if (isAutoSliding) {
+      interval = setInterval(() => {
+        if (currentIndex < slides.length - 1) {
+          // Slide to next
+          scrollViewRef.current?.scrollTo({
+            x: (currentIndex + 1) * width,
+            animated: true,
+          });
+          setCurrentIndex(prev => prev + 1);
+        } else {
+          // Last Slide - Navigate
+          setIsAutoSliding(false); // Stop sliding
+          setTimeout(() => {
+            navigation.replace('Login');
+          }, 1000); // Wait 1 sec before nav
+        }
+      }, 3000); // 3 Seconds per slide
+    }
+    return () => clearInterval(interval);
+  }, [currentIndex, isAutoSliding, slides.length, navigation]);
+
   const handleScroll = (event) => {
     const slideIndex = Math.round(event.nativeEvent.contentOffset.x / width);
     setCurrentIndex(slideIndex);
   };
 
-  const goToNext = () => {
-    if (currentIndex < slides.length - 1) {
-      scrollViewRef.current?.scrollTo({
-        x: (currentIndex + 1) * width,
-        animated: true,
-      });
-    } else {
-      // Navigate to Home or Login (Placeholder)
-      console.log("Navigate to main app");
-    }
+  const handleManualScroll = () => {
+    setIsAutoSliding(false);
   };
 
   return (
@@ -68,6 +85,7 @@ const OnboardingScreen = () => {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onScroll={handleScroll}
+        onScrollBeginDrag={handleManualScroll}
         scrollEventThrottle={16}
         bounces={false}
         style={styles.scrollView}

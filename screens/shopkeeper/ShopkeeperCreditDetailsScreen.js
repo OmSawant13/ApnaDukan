@@ -14,15 +14,30 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-const INITIAL_HISTORY = [
-    { id: '1', date: '02 Feb', text: 'Milk, Bread', amount: 150, type: 'credit', source: 'manual' },
-    { id: '2', date: '01 Feb', text: 'Paid ₹500', amount: 500, type: 'payment', source: 'manual' },
-];
+import { useCredit } from '../../context/CreditContext';
 
 export default function ShopkeeperCreditDetailsScreen({ navigation, route }) {
-    const { userName } = route.params || { userName: 'Customer' }; // Fallback
-    const [history, setHistory] = useState(INITIAL_HISTORY);
-    const [balance, setBalance] = useState(850); // Derived from initial history logic if needed, or fixed
+    const { userId } = route.params || {};
+    const { customers, addTransaction } = useCredit();
+
+    const customer = customers.find(c => c._id === userId);
+
+    // Fallback if customer not found (e.g. deleted)
+    if (!customer) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <Ionicons name="arrow-back" size={24} color="#111827" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Customer Not Found</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
+
+    const history = [...(customer.transactions || [])].reverse(); // Show latest first
+    const balance = customer.balance;
 
     const [showAdd, setShowAdd] = useState(false);
     const [showPay, setShowPay] = useState(false);
@@ -30,45 +45,26 @@ export default function ShopkeeperCreditDetailsScreen({ navigation, route }) {
     const [desc, setDesc] = useState('');
     const [amount, setAmount] = useState('');
 
-    const formatDate = (date) => {
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
         return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
     };
 
-    const handleAddCredit = () => {
+    const handleAddCredit = async () => {
         if (!amount) return;
         const val = parseFloat(amount);
         if (isNaN(val)) return;
 
-        const newItem = {
-            id: Date.now().toString(),
-            date: formatDate(new Date()),
-            text: desc || 'Manual Credit',
-            amount: val,
-            type: 'credit',
-            source: 'manual',
-        };
-
-        setHistory([newItem, ...history]);
-        setBalance(prev => prev + val);
+        await addTransaction(userId, 'credit', val, desc || 'Manual Credit');
         resetForms();
     };
 
-    const handleReceivePayment = () => {
+    const handleReceivePayment = async () => {
         if (!amount) return;
         const val = parseFloat(amount);
         if (isNaN(val)) return;
 
-        const newItem = {
-            id: Date.now().toString(),
-            date: formatDate(new Date()),
-            text: `Payment Received`,
-            amount: val,
-            type: 'payment',
-            source: 'manual',
-        };
-
-        setHistory([newItem, ...history]);
-        setBalance(prev => prev - val);
+        await addTransaction(userId, 'payment', val, 'Payment Received');
         resetForms();
     };
 
@@ -82,14 +78,14 @@ export default function ShopkeeperCreditDetailsScreen({ navigation, route }) {
     const renderItem = ({ item }) => (
         <View style={styles.txnRow}>
             <View style={styles.dateBox}>
-                <Text style={styles.date}>{item.date.split(' ')[0]}</Text>
-                <Text style={styles.month}>{item.date.split(' ')[1]}</Text>
+                <Text style={styles.date}>{formatDate(item.date).split(' ')[0]}</Text>
+                <Text style={styles.month}>{formatDate(item.date).split(' ')[1]}</Text>
             </View>
 
             <View style={{ flex: 1 }}>
                 <View style={styles.txnHeader}>
-                    <Text style={styles.desc}>{item.text}</Text>
-                    {item.source === 'manual' && (
+                    <Text style={styles.desc}>{item.note || item.text}</Text>
+                    {!item.orderId && (
                         <View style={styles.manualTag}>
                             <Text style={styles.manualText}>MANUAL</Text>
                         </View>
@@ -118,7 +114,7 @@ export default function ShopkeeperCreditDetailsScreen({ navigation, route }) {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
                         <Ionicons name="arrow-back" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>{userName}</Text>
+                    <Text style={styles.headerTitle}>{customer.name}</Text>
                 </View>
 
                 <TouchableOpacity style={styles.callBtn}>
@@ -142,7 +138,7 @@ export default function ShopkeeperCreditDetailsScreen({ navigation, route }) {
                 <Text style={styles.sectionTitle}>Transaction History</Text>
                 <FlatList
                     data={history}
-                    keyExtractor={item => item.id}
+                    keyExtractor={item => item._id || item.id}
                     renderItem={renderItem}
                     contentContainerStyle={{ paddingBottom: 100 }}
                     showsVerticalScrollIndicator={false}

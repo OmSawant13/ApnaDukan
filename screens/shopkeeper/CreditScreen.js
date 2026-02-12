@@ -13,38 +13,28 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-
-const INITIAL_USERS = [
-    { id: '1', name: 'Sharma Ji', due: 1200, lastDate: '2 Feb' },
-    { id: '2', name: 'Raju Mechanic', due: 450, lastDate: '1 Feb' },
-    { id: '3', name: 'Anjali Singh', due: 2100, lastDate: '30 Jan' },
-    { id: '4', name: 'Gupta Store', due: 5000, lastDate: '28 Jan' },
-];
+import { useCredit } from '../../context/CreditContext';
 
 export default function ShopkeeperCreditScreen({ navigation }) {
-    const [users, setUsers] = useState(INITIAL_USERS);
+    const { customers, addCustomer, addTransaction } = useCredit();
     const [isModalVisible, setModalVisible] = useState(false);
     const [newName, setNewName] = useState('');
     const [newPhone, setNewPhone] = useState('');
     const [newDesc, setNewDesc] = useState('');
     const [newAmount, setNewAmount] = useState('');
 
-    const handleAddUser = () => {
+    const handleAddUser = async () => {
         if (!newName.trim()) return;
 
-        const initialDue = newAmount ? parseFloat(newAmount) : 0;
+        await addCustomer(newName.trim(), newPhone.trim());
 
-        const newUser = {
-            id: Date.now().toString(),
-            name: newName.trim(),
-            due: initialDue,
-            lastDate: 'Just now',
-            // In a real app, we would also add the transaction to history
-        };
+        // If initial amount is added, we need to add a transaction too?
+        // For simplicity, addCustomer just creates user. 
+        // We can add transaction logic here if needed, but Context separates it.
+        // Let's assume Add Customer is just profile for now.
+        // Or better: context's addCustomer could handle initial balance if backend supported it.
+        // Let's stick to simple create.
 
-        setUsers([newUser, ...users]);
-
-        // Reset
         setNewName('');
         setNewPhone('');
         setNewDesc('');
@@ -52,21 +42,33 @@ export default function ShopkeeperCreditScreen({ navigation }) {
         setModalVisible(false);
     };
 
+    // Calculate Totals
+    const totalDue = customers.reduce((sum, c) => sum + (c.balance > 0 ? c.balance : 0), 0);
+    // Rough estimate of collected? Backend doesn't track "Total Collected" explicitly without aggregation.
+    // For now, let's just show Total Due.
+
+    // Last Date Logic
+    const getLastDate = (customer) => {
+        if (!customer.transactions || customer.transactions.length === 0) return 'New';
+        const lastTx = customer.transactions[customer.transactions.length - 1];
+        return new Date(lastTx.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+    };
+
     const renderUser = ({ item }) => (
         <TouchableOpacity
             style={styles.userCard}
-            onPress={() => navigation.navigate('ShopkeeperCreditDetails', { userId: item.id, userName: item.name })}
+            onPress={() => navigation.navigate('ShopkeeperCreditDetails', { userId: item._id, userName: item.name })}
         >
             <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{item.name[0]}</Text>
+                <Text style={styles.avatarText}>{item.name[0]?.toUpperCase()}</Text>
             </View>
             <View style={styles.userInfo}>
                 <Text style={styles.userName}>{item.name}</Text>
-                <Text style={styles.lastDate}>Last: {item.lastDate}</Text>
+                <Text style={styles.lastDate}>Last: {getLastDate(item)}</Text>
             </View>
             <View style={styles.dueInfo}>
                 <Text style={styles.dueLabel}>Due</Text>
-                <Text style={styles.dueAmount}>₹{item.due}</Text>
+                <Text style={styles.dueAmount}>₹{item.balance}</Text>
             </View>
         </TouchableOpacity>
     );
@@ -85,18 +87,20 @@ export default function ShopkeeperCreditScreen({ navigation }) {
             <View style={styles.summaryCard}>
                 <View style={styles.summaryItem}>
                     <Text style={styles.summaryLabel}>Total Due</Text>
-                    <Text style={styles.summaryValue}>₹8,750</Text>
+                    <Text style={styles.summaryValue}>₹{totalDue}</Text>
                 </View>
+                {/* 
                 <View style={styles.summaryDivider} />
                 <View style={styles.summaryItem}>
                     <Text style={styles.summaryLabel}>Collected</Text>
-                    <Text style={styles.summaryValue}>₹12,400</Text>
-                </View>
+                    <Text style={styles.summaryValue}>-</Text>
+                </View> 
+                */}
             </View>
 
             <FlatList
-                data={users}
-                keyExtractor={item => item.id}
+                data={customers}
+                keyExtractor={item => item._id}
                 renderItem={renderUser}
                 contentContainerStyle={styles.list}
                 showsVerticalScrollIndicator={false}

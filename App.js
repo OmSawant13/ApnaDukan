@@ -7,15 +7,26 @@ import AppNavigator from './navigation/AppNavigator';
 
 import { ProductProvider } from './context/ProductContext';
 
+import { OrderProvider } from './context/OrderContext';
+
+import { AuthProvider } from './context/AuthContext';
+import { CreditProvider } from './context/CreditContext';
+
 export default function App() {
   return (
     <SafeAreaProvider>
       <View style={styles.container}>
-        <ProductProvider>
-          <NavigationContainer>
-            <AppNavigator />
-          </NavigationContainer>
-        </ProductProvider>
+        <AuthProvider>
+          <ProductProvider>
+            <CreditProvider>
+              <OrderProvider>
+                <NavigationContainer>
+                  <AppNavigator />
+                </NavigationContainer>
+              </OrderProvider>
+            </CreditProvider>
+          </ProductProvider>
+        </AuthProvider>
         <StatusBar style="auto" />
       </View>
     </SafeAreaProvider>

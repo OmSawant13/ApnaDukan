@@ -11,6 +11,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useOrders } from '../context/OrderContext';
 
 /* -------------------- DUMMY DATA -------------------- */
 
@@ -80,43 +81,28 @@ const CartItem = ({ item, onIncrement, onDecrement, onRemove }) => {
 /* -------------------- SCREEN -------------------- */
 
 export default function CartScreen({ navigation }) {
-    const [cartItems, setCartItems] = useState(DUMMY_CART_ITEMS);
+    const { cart, updateQuantity, removeFromCart, getCartTotal, placeOrder, clearCart } = useOrders();
     const insets = useSafeAreaInsets();
+    const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
-    const increment = (id) => {
-        setCartItems(items =>
-            items.map(item =>
-                item.id === id
-                    ? { ...item, quantity: item.quantity + 1 }
-                    : item
-            )
-        );
+    const handlePlaceOrder = async () => {
+        setIsPlacingOrder(true);
+        // Hardcoded Customer Name for now
+        await placeOrder('Raju Bhai');
+        setIsPlacingOrder(false);
+        // Navigation handled by Alert in Context or we can Nav here?
+        // Context shows Alert. Let's redirect to Home after success?
+        // But clearCart makes items [] so it will show empty screen.
+        // Let's align with that.
     };
 
-    const decrement = (id) => {
-        setCartItems(items =>
-            items.map(item =>
-                item.id === id
-                    ? { ...item, quantity: Math.max(1, item.quantity - 1) }
-                    : item
-            )
-        );
-    };
-
-    const removeItem = (id) => {
-        setCartItems(items => items.filter(item => item.id !== id));
-    };
-
-    const subtotal = cartItems.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0
-    );
-    const deliveryFee = 20;
+    const subtotal = getCartTotal();
+    const deliveryFee = subtotal > 0 ? 20 : 0;
     const total = subtotal + deliveryFee;
 
     /* ---------------- EMPTY CART ---------------- */
 
-    if (cartItems.length === 0) {
+    if (cart.length === 0) {
         return (
             <SafeAreaView style={styles.container}>
                 <StatusBar barStyle="dark-content" />
@@ -164,21 +150,21 @@ export default function CartScreen({ navigation }) {
 
                 <Text style={styles.headerTitle}>My Cart</Text>
 
-                <TouchableOpacity onPress={() => setCartItems([])}>
+                <TouchableOpacity onPress={clearCart}>
                     <Text style={styles.clearText}>Clear</Text>
                 </TouchableOpacity>
             </View>
 
             {/* CART LIST */}
             <FlatList
-                data={cartItems}
+                data={cart}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                     <CartItem
                         item={item}
-                        onIncrement={() => increment(item.id)}
-                        onDecrement={() => decrement(item.id)}
-                        onRemove={() => removeItem(item.id)}
+                        onIncrement={() => updateQuantity(item.id, 1)}
+                        onDecrement={() => updateQuantity(item.id, -1)}
+                        onRemove={() => removeFromCart(item.id)}
                     />
                 )}
                 contentContainerStyle={styles.listContent}
@@ -204,15 +190,21 @@ export default function CartScreen({ navigation }) {
                     <Text style={styles.totalValue}>₹{total}</Text>
                 </View>
 
-                <TouchableOpacity style={styles.checkoutBtn}>
+                <TouchableOpacity
+                    style={[styles.checkoutBtn, isPlacingOrder && { opacity: 0.7 }]}
+                    onPress={handlePlaceOrder}
+                    disabled={isPlacingOrder}
+                >
                     <LinearGradient
                         colors={['#10b981', '#059669']}
                         style={styles.gradientBtn}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                     >
-                        <Text style={styles.checkoutText}>Proceed to Buy</Text>
-                        <Ionicons name="arrow-forward" size={20} color="#fff" />
+                        <Text style={styles.checkoutText}>
+                            {isPlacingOrder ? 'Placing Order...' : 'Proceed to Buy'}
+                        </Text>
+                        {!isPlacingOrder && <Ionicons name="arrow-forward" size={20} color="#fff" />}
                     </LinearGradient>
                 </TouchableOpacity>
             </View>
