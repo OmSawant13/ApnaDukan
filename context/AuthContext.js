@@ -21,7 +21,27 @@ export const AuthProvider = ({ children }) => {
         try {
             const userData = await AsyncStorage.getItem('user');
             if (userData) {
-                setUser(JSON.parse(userData));
+                const loggedInUser = JSON.parse(userData);
+
+                // Verify if user still exists in DB
+                try {
+                    const res = await fetch(`${API_URL}/customers/${loggedInUser._id}`);
+                    if (res.status === 404) {
+                        console.log('User not found in DB, logging out...');
+                        await logout();
+                        return;
+                    }
+
+                    const freshUser = await res.json();
+                    if (res.ok) {
+                        setUser(freshUser);
+                        await AsyncStorage.setItem('user', JSON.stringify(freshUser));
+                    }
+                } catch (fetchErr) {
+                    // If network fails, keep local user but log error
+                    console.error('Session verification failed (network):', fetchErr);
+                    setUser(loggedInUser);
+                }
             }
         } catch (e) {
             console.error('Failed to load user', e);
@@ -59,14 +79,14 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Signup (Name + Phone + Password + Optional ProfilePic)
-    const signup = async (name, phone, password, profilePic = null) => {
+    // Signup (Name + Phone + Password + Optional ProfilePic + Role)
+    const signup = async (name, phone, password, role = 'customer', profilePic = null) => {
         try {
             setLoading(true);
             const res = await fetch(`${API_URL}/customers`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, phone, password, profilePic })
+                body: JSON.stringify({ name, phone, password, role, profilePic })
             });
 
             const data = await res.json();

@@ -13,6 +13,10 @@ const productSchema = new mongoose.Schema({
         type: String, // kg, litre, packet, dozen etc.
         required: true,
     },
+    active: {
+        type: Boolean,
+        default: true
+    },
     stock: {
         type: Boolean,
         default: true
@@ -28,6 +32,24 @@ const productSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Category',
         required: true,
+    },
+    isFeatured: {
+        type: Boolean,
+        default: false
+    },
+    isCredit: {
+        type: Boolean,
+        default: false
+    },
+    smartCategory: {
+        type: String,
+        enum: ['daily', 'snacks', 'cooking', 'household', 'baby', 'other'],
+        default: 'other'
+    },
+    shopId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Shop',
+        required: true
     }
 }, { timestamps: true });
 

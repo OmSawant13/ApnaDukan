@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
     Text,
@@ -10,23 +10,33 @@ import {
     TextInput,
     Switch,
     Alert,
-    ScrollView
+    ScrollView,
+    FlatList
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useProducts } from '../../context/ProductContext';
+import { useShopLanguage } from '../../context/LanguageContext';
 
 export default function ShopkeeperProductDetailsScreen({ navigation, route }) {
     const { item: initialItem } = route.params;
     const { products, categories, updateProduct, toggleStock, incrementStock, decrementStock, deleteProduct } = useProducts();
+    const { t, translateProduct } = useShopLanguage();
 
     const product = products.find(p => p.id === initialItem.id) || initialItem;
     const [price, setPrice] = useState(product.price.toString());
     const [isEditingPrice, setIsEditingPrice] = useState(false);
+    const scrollRef = useRef(null);
 
     useEffect(() => {
         setPrice(product.price.toString());
     }, [product.price]);
+
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTo({ y: (product.stockCount || 0) * 40, animated: true });
+        }
+    }, [product.stockCount]);
 
     const handleSavePrice = () => {
         const newPrice = parseFloat(price);
@@ -34,19 +44,20 @@ export default function ShopkeeperProductDetailsScreen({ navigation, route }) {
             updateProduct(product.id, { price: newPrice });
             setIsEditingPrice(false);
         } else {
-            Alert.alert("Invalid Price", "Please enter a valid number");
+            Alert.alert(t('error') || 'Error', t('invalid_price') || "Please enter a valid number");
             setPrice(product.price.toString());
         }
     };
 
+
     const handleDelete = () => {
         Alert.alert(
-            "Delete Product",
-            "Are you sure you want to delete this product? This action cannot be undone.",
+            t('delete_category') === 'Delete Category' ? 'Delete Product' : (t('delete') + ' ' + t('products')),
+            (t('delete_category_confirm') === 'Delete this category and all its products?' ? "Are you sure you want to delete this product?" : t('delete_category_confirm')),
             [
-                { text: "Cancel", style: "cancel" },
+                { text: t('cancel') || "Cancel", style: "cancel" },
                 {
-                    text: "Delete",
+                    text: t('delete') || "Delete",
                     style: "destructive",
                     onPress: () => {
                         deleteProduct(product.id, product.categoryId);
@@ -69,7 +80,7 @@ export default function ShopkeeperProductDetailsScreen({ navigation, route }) {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
                         <Ionicons name="chevron-back" size={24} color="#1f2937" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Product Details</Text>
+                    <Text style={styles.headerTitle}>{t('product_details')}</Text>
                     <TouchableOpacity onPress={handleDelete} style={[styles.iconButton, { borderColor: '#FEE2E2', backgroundColor: '#FEF2F2' }]}>
                         <Ionicons name="trash-outline" size={22} color="#EF4444" />
                     </TouchableOpacity>
@@ -83,7 +94,7 @@ export default function ShopkeeperProductDetailsScreen({ navigation, route }) {
                     <Image source={product.image} style={[styles.productImage, !product.stock && { opacity: 0.5 }]} resizeMode="cover" />
                     {!product.stock && (
                         <View style={styles.outOfStockBadge}>
-                            <Text style={styles.outOfStockText}>HIDDEN</Text>
+                            <Text style={styles.outOfStockText}>{t('hidden')}</Text>
                         </View>
                     )}
                 </View>
@@ -94,14 +105,14 @@ export default function ShopkeeperProductDetailsScreen({ navigation, route }) {
                     {/* Title & Live Toggle */}
                     <View style={styles.titleRow}>
                         <View style={styles.titleWrapper}>
-                            <Text style={styles.productName}>{product.name}</Text>
-                            <Text style={styles.rateSubheading}>{product.subtitle || product.unit}</Text>
+                            <Text style={styles.productName}>{translateProduct(product.name)}</Text>
+                            <Text style={styles.rateSubheading}>{product.subtitle || t(product.unit) || product.unit}</Text>
                         </View>
 
                         {/* Live Toggle Pill */}
                         <View style={styles.liveToggleContainer}>
                             <Text style={[styles.liveText, product.stock ? { color: '#10B981' } : { color: '#EF4444' }]}>
-                                {product.stock ? 'Live' : 'Off'}
+                                {product.stock ? t('live') : t('off')}
                             </Text>
                             <Switch
                                 trackColor={{ false: "#D1D5DB", true: "#10B981" }}
@@ -113,12 +124,13 @@ export default function ShopkeeperProductDetailsScreen({ navigation, route }) {
                         </View>
                     </View>
 
+
                     {/* Controls Section (Replaces Calculator) */}
                     <View style={styles.controlsContainer}>
 
                         {/* Price Edit Card */}
                         <View style={styles.controlCard}>
-                            <Text style={styles.controlLabel}>SELLING PRICE (₹)</Text>
+                            <Text style={styles.controlLabel}>{t('selling_price')}</Text>
                             <View style={styles.priceEditRow}>
                                 {isEditingPrice ? (
                                     <View style={styles.editWrapper}>
@@ -146,7 +158,7 @@ export default function ShopkeeperProductDetailsScreen({ navigation, route }) {
 
                         {/* Stock Manager Card */}
                         <View style={styles.controlCard}>
-                            <Text style={styles.controlLabel}>CURRENT STOCK</Text>
+                            <Text style={styles.controlLabel}>{t('current_stock')}</Text>
                             <View style={styles.stockRow}>
                                 <TouchableOpacity
                                     style={styles.stockBtn}
@@ -157,8 +169,29 @@ export default function ShopkeeperProductDetailsScreen({ navigation, route }) {
                                 </TouchableOpacity>
 
                                 <View style={styles.stockInfo}>
-                                    <Text style={styles.stockCount}>{product.stockCount || 0}</Text>
-                                    <Text style={styles.stockUnit}>{isWeightType ? 'kg' : 'Pcs'}</Text>
+                                    <View style={styles.verticalPickerContainer}>
+                                        <ScrollView
+                                            ref={scrollRef}
+                                            showsVerticalScrollIndicator={false}
+                                            snapToInterval={40}
+                                            decelerationRate="fast"
+                                            nestedScrollEnabled={true}
+                                            contentOffset={{ x: 0, y: (product.stockCount || 0) * 40 }}
+                                            onMomentumScrollEnd={(e) => {
+                                                const newIndex = Math.round(e.nativeEvent.contentOffset.y / 40);
+                                                if (newIndex !== product.stockCount) {
+                                                    updateProduct(product.id, { stockCount: newIndex });
+                                                }
+                                            }}
+                                        >
+                                            {[...Array(501).keys()].map((val) => (
+                                                <View key={val} style={styles.pickerItem}>
+                                                    <Text style={styles.stockCount}>{val}</Text>
+                                                </View>
+                                            ))}
+                                        </ScrollView>
+                                    </View>
+                                    <Text style={styles.stockUnit}>{isWeightType ? (t('kg') || 'kg') : (t('unit') || 'Pcs')}</Text>
                                 </View>
 
                                 <TouchableOpacity
@@ -171,11 +204,12 @@ export default function ShopkeeperProductDetailsScreen({ navigation, route }) {
                             </View>
                         </View>
 
+                        {/* Details Section */}
+                        {/* (This part was previously here) */}
                     </View>
-
-                    {/* Bottom Space */}
-                    <View style={{ height: 40 }} />
                 </View>
+
+                <View style={{ height: 40 }} />
             </ScrollView>
         </View>
     );
@@ -376,5 +410,29 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#6b7280',
         fontWeight: '600',
+    },
+    stockInputWrapper: {
+        borderBottomWidth: 2,
+        borderBottomColor: '#111827',
+        minWidth: 60,
+        alignItems: 'center',
+    },
+    stockInput: {
+        fontSize: 28,
+        fontWeight: '800',
+        color: '#1f2937',
+        paddingVertical: 0,
+        textAlign: 'center',
+    },
+    verticalPickerContainer: {
+        height: 40,
+        width: 80,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    pickerItem: {
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 });

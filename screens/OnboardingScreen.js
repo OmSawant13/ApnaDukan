@@ -9,37 +9,39 @@ import {
   Image,
   Platform,
 } from 'react-native';
+import { useLanguage } from '../context/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
 const OnboardingScreen = ({ navigation }) => {
   const scrollViewRef = useRef(null);
+  const { t } = useLanguage();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoSliding, setIsAutoSliding] = useState(true);
 
   const slides = [
     {
       id: 1,
-      title: 'Welcome',
-      description: 'Your daily essentials, delivered fresh from your trusted local Kirana store.',
+      title: t('onboard_title_1'),
+      description: t('onboard_desc_1'),
       image: require('../assets/onboarding_1.png'), // Atta, Ghee, Rice
     },
     {
       id: 2,
-      title: 'Organic Pulses',
-      description: 'High-quality Toor, Moong, and Masoor Dal sourced directly for your family.',
+      title: t('onboard_title_2'),
+      description: t('onboard_desc_2'),
       image: require('../assets/onboarding_2.png'), // Dals
     },
     {
       id: 3,
-      title: 'Fresh Vegetables',
-      description: 'Farm-fresh onions, potatoes, and tomatoes. Handpicked daily.',
+      title: t('onboard_title_3'),
+      description: t('onboard_desc_3'),
       image: require('../assets/onboarding_3.png'), // Veggies
     },
     {
       id: 4,
-      title: 'Authentic Spices',
-      description: 'Pure Haldi, Mirchi, and Dhania to bring the real taste of India to your kitchen.',
+      title: t('onboard_title_4'),
+      description: t('onboard_desc_4'),
       image: require('../assets/onboarding_4.png'), // Spices
     },
   ];

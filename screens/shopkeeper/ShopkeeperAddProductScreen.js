@@ -1,34 +1,121 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    ScrollView,
+    Image,
+    Keyboard,
+    Platform,
+    KeyboardAvoidingView,
+    Switch,
+    Alert
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useProducts } from '../../context/ProductContext';
+import { API_URL } from '../../config';
+import { useShopLanguage } from '../../context/LanguageContext';
 
 export default function ShopkeeperAddProductScreen({ route, navigation }) {
     const { categoryId, categoryType } = route.params;
     const { addProduct } = useProducts();
+    const { t } = useShopLanguage();
 
     const [name, setName] = useState('');
     const [subtitle, setSubtitle] = useState('');
     const [price, setPrice] = useState('');
     const [stockCount, setStockCount] = useState('');
+    const [isFeatured, setIsFeatured] = useState(false);
 
-    // Placeholder image logic (can be expanded later)
-    const defaultImage = require('../../assets/Panipuri.jpeg'); // Using a fallback asset for now
+    const [image, setImage] = useState(null);
+    const [uploading, setUploading] = useState(false);
+    const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
-    const handleSave = () => {
-        if (!name || !price) return;
+    useEffect(() => {
+        const keyboardDidShowListener = Keyboard.addListener(
+            'keyboardDidShow',
+            () => { setKeyboardVisible(true); }
+        );
+        const keyboardDidHideListener = Keyboard.addListener(
+            'keyboardDidHide',
+            () => { setKeyboardVisible(false); }
+        );
 
+        return () => {
+            keyboardDidHideListener.remove();
+            keyboardDidShowListener.remove();
+        };
+    }, []);
+
+    const pickImage = async () => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 0.8,
+        });
+
+        if (!result.canceled) {
+            setImage(result.assets[0].uri);
+        }
+    };
+
+    const handleSave = async () => {
+        if (!name || !price) {
+            alert(t('error') || "Name and Price are required!");
+            return;
+        }
+
+        let finalImageUrl = null;
+
+        // 1. Upload Image if selected
+        if (image) {
+            setUploading(true);
+            try {
+                const formData = new FormData();
+                formData.append('image', {
+                    uri: image,
+                    name: 'product.jpg',
+                    type: 'image/jpeg',
+                });
+
+                const res = await fetch(`${API_URL}/upload`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                });
+
+                const data = await res.json();
+                if (data.imageUrl) {
+                    finalImageUrl = data.imageUrl;
+                }
+            } catch (error) {
+                console.error("Upload Failed", error);
+                alert("Image Upload Failed");
+                setUploading(false);
+                return;
+            }
+            setUploading(false);
+        }
+
+        // 2. Save Product
         const productData = {
             id: Date.now().toString(),
             categoryId,
             name,
-            subtitle: subtitle || (categoryType === 'weight' ? '1 kg' : '1 unit'),
+            subtitle: subtitle || (categoryType === 'weight' ? (t('kg') || '1 kg') : (t('unit') || '1 unit')),
             price: parseFloat(price),
             stockCount: parseInt(stockCount) || 0,
-            image: defaultImage,
-            unit: categoryType === 'weight' ? 'kg' : 'unit', // For internal logic if needed
-            type: categoryType, // Explicitly save type
+            image: finalImageUrl,
+            unit: categoryType === 'weight' ? (t('kg') || 'kg') : (t('unit') || 'unit'),
+            type: categoryType,
+            isFeatured: isFeatured,
         };
 
         addProduct(productData);
@@ -44,71 +131,105 @@ export default function ShopkeeperAddProductScreen({ route, navigation }) {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
                     <Ionicons name="arrow-back" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Add {isWeight ? 'Weight' : 'Packet'} Item</Text>
+                <Text style={styles.title}>{t('add_item')}</Text>
                 <View style={{ width: 40 }} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.content}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0} // Adjust if needed
+            >
+                <ScrollView contentContainerStyle={styles.content}>
 
-                {/* 1. Image */}
-                <View style={styles.imagePlaceholder}>
-                    <Ionicons name="image-outline" size={40} color="#9ca3af" />
-                    <Text style={styles.imageText}>Product Image</Text>
+                    {/* 1. Image */}
+                    <TouchableOpacity onPress={pickImage} style={styles.imagePlaceholder}>
+                        {image ? (
+                            <Image source={{ uri: image }} style={{ width: '100%', height: '100%', borderRadius: 20 }} />
+                        ) : (
+                            <>
+                                <Ionicons name="camera-outline" size={40} color="#9ca3af" />
+                                <Text style={styles.imageText}>{t('tap_add_photo')}</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+
+                    {/* 2. Name */}
+                    <View style={styles.formGroup}>
+                        <Text style={styles.label}>{t('product_name_label')}</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="..."
+                            value={name}
+                            onChangeText={setName}
+                        />
+                    </View>
+
+                    {/* 3. Subtitle */}
+                    <View style={styles.formGroup}>
+                        <Text style={styles.label}>{t('subtitle_optional')}</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="..."
+                            value={subtitle}
+                            onChangeText={setSubtitle}
+                        />
+                    </View>
+
+                    {/* 4. Price */}
+                    <View style={styles.formGroup}>
+                        <Text style={styles.label}>{t('price_label')}</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="0"
+                            keyboardType="numeric"
+                            value={price}
+                            onChangeText={setPrice}
+                        />
+                    </View>
+
+                    {/* 5. Stock */}
+                    <View style={styles.formGroup}>
+                        <Text style={styles.label}>{t('stock_label')}</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="0"
+                            keyboardType="numeric"
+                            value={stockCount}
+                            onChangeText={setStockCount}
+                        />
+                    </View>
+
+                    {/* 6. Featured Toggle */}
+                    <View style={[styles.formGroup, styles.toggleRow]}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.label}>{t('show_in_featured')}</Text>
+                            <Text style={styles.toggleSub}>{t('featured_sub')}</Text>
+                        </View>
+                        <Switch
+                            trackColor={{ false: "#D1D5DB", true: "#10B981" }}
+                            thumbColor={isFeatured ? "#ffffff" : "#f4f3f4"}
+                            onValueChange={setIsFeatured}
+                            value={isFeatured}
+                        />
+                    </View>
+
+                    <View style={{ height: 100 }} />
+
+                </ScrollView>
+
+                {/* Footer Inside KeyboardAvoidingView to stick above keyboard */}
+                <View style={styles.footer}>
+                    <TouchableOpacity
+                        style={[styles.saveBtn, uploading && { opacity: 0.7 }]}
+                        onPress={handleSave}
+                        disabled={uploading}
+                    >
+                        <Text style={styles.saveText}>{uploading ? '...' : t('save_product')}</Text>
+                    </TouchableOpacity>
                 </View>
 
-                {/* 2. Name */}
-                <View style={styles.formGroup}>
-                    <Text style={styles.label}>Product Name</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder={isWeight ? "e.g. Potato" : "e.g. Amul Dahi"}
-                        value={name}
-                        onChangeText={setName}
-                    />
-                </View>
-
-                {/* 3. Subtitle */}
-                <View style={styles.formGroup}>
-                    <Text style={styles.label}>Subtitle (Optional)</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder={isWeight ? "e.g. ₹20 / kg" : "e.g. 500 ml"}
-                        value={subtitle}
-                        onChangeText={setSubtitle}
-                    />
-                </View>
-
-                {/* 4. Price */}
-                <View style={styles.formGroup}>
-                    <Text style={styles.label}>{isWeight ? "Price per kg (₹)" : "Price per unit (₹)"}</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="0"
-                        keyboardType="numeric"
-                        value={price}
-                        onChangeText={setPrice}
-                    />
-                </View>
-
-                {/* 5. Stock */}
-                <View style={styles.formGroup}>
-                    <Text style={styles.label}>{isWeight ? "Available Weight (kg)" : "Available Quantity (units)"}</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="0"
-                        keyboardType="numeric"
-                        value={stockCount}
-                        onChangeText={setStockCount}
-                    />
-                </View>
-
-            </ScrollView>
-
-            <View style={styles.footer}>
-                <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-                    <Text style={styles.saveText}>Save Product</Text>
-                </TouchableOpacity>
-            </View>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
@@ -120,14 +241,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingVertical: 16,
+        paddingTop: 38,      // Keep top space for status bar
+        paddingBottom: 12,   // Reduced from 38 to 12
         backgroundColor: '#fff',
         borderBottomWidth: 1,
         borderBottomColor: '#F3F4F6',
+        marginTop: -40,
     },
-    backBtn: { padding: 8, backgroundColor: '#f3f4f6', borderRadius: 20 },
-    title: { fontSize: 18, fontWeight: '800', color: '#111827' },
-    content: { padding: 24 },
+    backBtn: { padding: 8, backgroundColor: '#f3f4f6', borderRadius: 20, marginTop: 10 },
+    title: { fontSize: 18, fontWeight: '800', color: '#111827', marginTop: 10 },
+    content: { padding: 24, },
 
     imagePlaceholder: {
         width: 120, // Bigger
@@ -164,6 +287,22 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.03,
         shadowRadius: 2,
+    },
+    toggleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#fff',
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 1.5,
+        borderColor: '#f3f4f6',
+    },
+    toggleSub: {
+        fontSize: 12,
+        color: '#9ca3af',
+        marginLeft: 4,
+        marginTop: -4,
     },
 
     footer: {

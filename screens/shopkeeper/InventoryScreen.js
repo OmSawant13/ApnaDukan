@@ -5,42 +5,29 @@ import {
     StyleSheet,
     FlatList,
     TouchableOpacity,
-    Modal,
-    TextInput,
     Alert,
     StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useProducts } from '../../context/ProductContext';
+import { useShopLanguage } from '../../context/LanguageContext';
 
 export default function ShopkeeperInventoryScreen({ navigation }) {
-    const { categories, addCategory } = useProducts();
-
-    const [isModalVisible, setModalVisible] = useState(false);
-    const [newCategoryName, setNewCategoryName] = useState('');
-    const [newCategoryType, setNewCategoryType] = useState('weight');
-
-    const handleAddCategory = () => {
-        if (!newCategoryName.trim()) return;
-        addCategory(newCategoryName.trim(), newCategoryType);
-        setNewCategoryName('');
-        setNewCategoryType('weight');
-        setModalVisible(false);
-    };
+    const { categories, addCategory, deleteCategory } = useProducts();
+    const { t, translateProduct } = useShopLanguage();
 
     const handleDeleteCategory = (id, name) => {
         Alert.alert(
-            'Delete Category',
-            `Delete "${name}" and all its products?`,
+            t('delete_category'),
+            t('delete_category_confirm'),
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
-                    text: 'Delete',
+                    text: t('delete'),
                     style: 'destructive',
                     onPress: () => {
-                        console.log('Delete category', id);
-                        // deleteCategory(id);
+                        deleteCategory(id);
                     },
                 },
             ]
@@ -74,9 +61,9 @@ export default function ShopkeeperInventoryScreen({ navigation }) {
                     </View>
 
                     <View>
-                        <Text style={styles.catName}>{item.name}</Text>
+                        <Text style={styles.catName}>{translateProduct(item.name)}</Text>
                         <Text style={styles.subText}>
-                            {isWeight ? 'Weight Based' : 'Packet Based'}
+                            {isWeight ? t('weight_based') : t('packet_based')}
                         </Text>
                     </View>
                 </View>
@@ -92,8 +79,11 @@ export default function ShopkeeperInventoryScreen({ navigation }) {
 
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.title}>Inventory</Text>
-                <TouchableOpacity style={styles.headerAddBtn} onPress={() => setModalVisible(true)}>
+                <Text style={styles.title}>{t('inventory')}</Text>
+                <TouchableOpacity
+                    style={styles.headerAddBtn}
+                    onPress={() => navigation.navigate('ShopkeeperAddCategory')}
+                >
                     <Ionicons name="add" size={28} color="#fff" />
                 </TouchableOpacity>
             </View>
@@ -101,81 +91,20 @@ export default function ShopkeeperInventoryScreen({ navigation }) {
             {/* List */}
             <FlatList
                 data={categories}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item, index) => (item.id || item._id || index).toString()}
                 renderItem={renderCategoryItem}
                 contentContainerStyle={styles.listContent}
                 ListEmptyComponent={
                     <View style={styles.empty}>
                         <Ionicons name="cube-outline" size={48} color="#CBD5E1" />
-                        <Text style={styles.emptyText}>No categories yet</Text>
-                        <Text style={styles.subText}>Tap + to add your first one</Text>
+                        <Text style={styles.emptyText}>{t('no_categories')}</Text>
+                        <Text style={styles.subText}>{t('tap_to_add_category')}</Text>
                     </View>
                 }
             />
-
-            {/* Modal */}
-            <Modal
-                transparent
-                visible={isModalVisible}
-                animationType="fade"
-                onRequestClose={() => setModalVisible(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        {/* Drag Indicator */}
-                        <View style={styles.dragIndicator} />
-
-                        <Text style={styles.modalTitle}>New Category</Text>
-
-                        <Text style={styles.label}>Name</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="e.g. Vegetables"
-                            value={newCategoryName}
-                            onChangeText={setNewCategoryName}
-                            autoFocus
-                        />
-
-                        <Text style={styles.label}>Category Type</Text>
-                        <View style={styles.typeRow}>
-                            <TouchableOpacity
-                                style={[
-                                    styles.typeOption,
-                                    newCategoryType === 'weight' && styles.activeType,
-                                ]}
-                                onPress={() => setNewCategoryType('weight')}
-                            >
-                                <Ionicons name="scale" size={22} />
-                                <Text style={styles.typeText}>Weight</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[
-                                    styles.typeOption,
-                                    newCategoryType === 'packet' && styles.activeType,
-                                ]}
-                                onPress={() => setNewCategoryType('packet')}
-                            >
-                                <Ionicons name="cube" size={22} />
-                                <Text style={styles.typeText}>Packet</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        <TouchableOpacity style={styles.saveBtn} onPress={handleAddCategory}>
-                            <Text style={styles.saveText}>Save Category</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity onPress={() => setModalVisible(false)}>
-                            <Text style={styles.closeText}>Cancel</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
         </SafeAreaView>
     );
 }
-
-/* ---------------- STYLES ---------------- */
 
 const styles = StyleSheet.create({
     container: {
@@ -261,94 +190,5 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         marginTop: 12,
         color: '#0F172A',
-    },
-
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(15,23,42,0.45)',
-        justifyContent: 'flex-end',
-    },
-
-    modalContent: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 36,
-        borderTopRightRadius: 36,
-        padding: 28,
-    },
-
-    dragIndicator: {
-        width: 40,
-        height: 5,
-        backgroundColor: '#E5E7EB',
-        borderRadius: 10,
-        alignSelf: 'center',
-        marginBottom: 20,
-    },
-
-    modalTitle: {
-        fontSize: 24,
-        fontWeight: '900',
-        marginBottom: 24,
-    },
-
-    label: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#64748B',
-        marginBottom: 8,
-        textTransform: 'uppercase',
-    },
-
-    input: {
-        backgroundColor: '#F1F5F9',
-        borderRadius: 18,
-        padding: 18,
-        fontSize: 17,
-        marginBottom: 22,
-    },
-
-    typeRow: {
-        flexDirection: 'row',
-        gap: 14,
-        marginBottom: 28,
-    },
-
-    typeOption: {
-        flex: 1,
-        paddingVertical: 18,
-        borderRadius: 18,
-        borderWidth: 2,
-        borderColor: '#E5E7EB',
-        alignItems: 'center',
-        gap: 6,
-    },
-
-    activeType: {
-        borderColor: '#0F172A',
-        backgroundColor: '#F8FAFC',
-    },
-
-    typeText: {
-        fontWeight: '700',
-    },
-
-    saveBtn: {
-        backgroundColor: '#0F172A',
-        paddingVertical: 20,
-        borderRadius: 20,
-        alignItems: 'center',
-        marginBottom: 14,
-    },
-
-    saveText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '900',
-    },
-
-    closeText: {
-        textAlign: 'center',
-        color: '#64748B',
-        fontWeight: '700',
     },
 });

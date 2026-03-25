@@ -9,28 +9,94 @@ import {
     Image,
     Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useProducts } from '../context/ProductContext';
+import { useOrders } from '../context/OrderContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const ProductDetailsScreen = ({ navigation, route }) => {
     const { item } = route.params || {};
+    const { addToCart, cart } = useOrders();
+    const { products } = useProducts();
+    const { t, translateProduct } = useLanguage();
+    const insets = useSafeAreaInsets();
 
-    const product = item || {
+    // Find LIVE product data from context (updated via Socket)
+    const liveProduct = products.find(p => p.id === item.id) || item;
+
+    // Find in Cart
+    const cartItem = cart.find(c => c.id === liveProduct.id);
+    const initialQuantity = cartItem ? cartItem.quantity : 1;
+
+    // Calculate total cart items for badge
+    const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
+
+    const product = liveProduct || {
         name: "Beef Mixed Cut Bone",
         weight: "500 gm",
         price: 23,
         mrp: 45,
-        type: 'unit'
+        type: 'unit',
+        stock: true,
+        stockCount: 0
     };
 
-    const [quantity, setQuantity] = useState(1);
+    const [quantity, setQuantity] = useState(initialQuantity); // Sync with Cart
     const [isFavorite, setIsFavorite] = useState(false);
 
-    const incrementQuantity = () => setQuantity(q => q + 1);
+    // Update local state if cart changes externally (e.g. cleared)
+    // Optional: useEffect(() => { if (cartItem) setQuantity(cartItem.quantity); }, [cartItem]);
+
+    const incrementQuantity = () => {
+        // Check Stock Limit (Target Quantity)
+        if (product.stock && quantity >= product.stockCount) {
+            alert(`Only ${product.stockCount} items available in stock!`);
+            return;
+        }
+        setQuantity(q => q + 1);
+    }
     const decrementQuantity = () => setQuantity(q => (q > 1 ? q - 1 : 1));
     const toggleFavorite = () => setIsFavorite(!isFavorite);
 
     const displayPrice = product.price * quantity;
+
+    const { updateQuantity } = useOrders(); // Destructure updateQuantity
+
+    const handleAddToCart = () => {
+        // Stock Validation
+        if (!product.stock || product.stockCount <= 0) {
+            alert('Product is Out of Stock!');
+            return;
+        }
+
+        if (quantity > product.stockCount) {
+            alert(`Stock Limit Reached! Only ${product.stockCount} available.`);
+            return;
+        }
+
+        const currentInCart = cartItem ? cartItem.quantity : 0;
+        const delta = quantity - currentInCart;
+
+        if (delta === 0) {
+            alert('Cart updated!'); // Or just navigate
+            navigation.navigate('Cart');
+            return;
+        }
+
+        if (currentInCart === 0) {
+            // New Item: Add 'quantity' times
+            for (let i = 0; i < quantity; i++) {
+                addToCart(product);
+            }
+        } else {
+            // Update Existing Item
+            updateQuantity(product.id, delta);
+        }
+
+        navigation.navigate('Cart');
+    };
 
     return (
         <View style={styles.container}>
@@ -46,13 +112,15 @@ const ProductDetailsScreen = ({ navigation, route }) => {
                         <Ionicons name="chevron-back" size={24} color="#1f2937" />
                     </TouchableOpacity>
 
-                    <Text style={styles.headerTitle}>Product Details</Text>
+                    <Text style={styles.headerTitle}>{t('product_details')}</Text>
 
                     <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Cart')}>
                         <Ionicons name="cart-outline" size={24} color="#1f2937" />
-                        <View style={styles.badge}>
-                            <Text style={styles.badgeText}>2</Text>
-                        </View>
+                        {cartItemCount > 0 && (
+                            <View style={styles.badge}>
+                                <Text style={styles.badgeText}>{cartItemCount}</Text>
+                            </View>
+                        )}
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>
@@ -61,7 +129,7 @@ const ProductDetailsScreen = ({ navigation, route }) => {
                 {/* Product Image */}
                 <View style={styles.imageSection}>
                     <Image
-                        source={require('../assets/Panipuri.jpeg')}
+                        source={product.image} // Use item image directly
                         style={styles.productImage}
                         resizeMode="cover"
                     />
@@ -70,7 +138,7 @@ const ProductDetailsScreen = ({ navigation, route }) => {
                             colors={['#f59e0b', '#ef4444']}
                             style={styles.discountGradient}
                         >
-                            <Text style={styles.discountText}>OFFER</Text>
+                            <Text style={styles.discountText}>{t('offer')}</Text>
                         </LinearGradient>
                     </View>
                 </View>
@@ -81,8 +149,8 @@ const ProductDetailsScreen = ({ navigation, route }) => {
                     {/* Title */}
                     <View style={styles.titleRow}>
                         <View style={styles.titleWrapper}>
-                            <Text style={styles.productName}>{product.name}</Text>
-                            <Text style={styles.productWeight}>{product.weight}</Text>
+                            <Text style={styles.productName}>{translateProduct(product.name)}</Text>
+                            <Text style={styles.productWeight}>{translateProduct(product.subtitle) || translateProduct(product.weight) || translateProduct(product.unit)}</Text>
                         </View>
 
                         <TouchableOpacity
@@ -104,25 +172,24 @@ const ProductDetailsScreen = ({ navigation, route }) => {
 
                     {/* Description */}
                     <Text style={styles.description}>
-                        Fresh and high quality products delivered directly to your doorstep.
-                        Verified by local farmers.
+                        {t('product_desc_fallback')}
                     </Text>
 
                     {/* ✅ TRUST ROW ADDED */}
                     <View style={styles.trustRow}>
                         <View style={styles.trustItem}>
                             <Ionicons name="checkmark-circle" size={18} color="#10b981" />
-                            <Text style={styles.trustText}>Fresh</Text>
+                            <Text style={styles.trustText}>{t('fresh')}</Text>
                         </View>
 
                         <View style={styles.trustItem}>
                             <Ionicons name="time-outline" size={18} color="#10b981" />
-                            <Text style={styles.trustText}>30 Min</Text>
+                            <Text style={styles.trustText}>{t('30_min')}</Text>
                         </View>
 
                         <View style={styles.trustItem}>
                             <Ionicons name="refresh-outline" size={18} color="#10b981" />
-                            <Text style={styles.trustText}>Easy Return</Text>
+                            <Text style={styles.trustText}>{t('easy_return')}</Text>
                         </View>
                     </View>
 
@@ -140,13 +207,13 @@ const ProductDetailsScreen = ({ navigation, route }) => {
                             </TouchableOpacity>
                         </View>
 
-                        <TouchableOpacity style={styles.addToCartBtn}>
+                        <TouchableOpacity style={styles.addToCartBtn} onPress={handleAddToCart}>
                             <LinearGradient
                                 colors={['#10b981', '#059669']}
                                 style={styles.btnGradient}
                             >
                                 <Ionicons name="cart-outline" size={20} color="#fff" />
-                                <Text style={styles.btnText}>Add to Cart</Text>
+                                <Text style={styles.btnText}>{t('add_to_cart')}</Text>
                                 <View style={styles.verticalDivider} />
                                 <Text style={styles.btnPrice}>₹{displayPrice}</Text>
                             </LinearGradient>
@@ -156,7 +223,7 @@ const ProductDetailsScreen = ({ navigation, route }) => {
                     <View style={{ height: 40 }} />
                 </View>
             </View>
-        </View>
+        </View >
     );
 };
 
@@ -207,7 +274,7 @@ const styles = StyleSheet.create({
 
     imageSection: { alignItems: 'center', marginVertical: 20 },
 
-    productImage: { width: 320, height: 320, borderRadius: 40 },
+    productImage: { width: 280, height: 280, borderRadius: 32 },
 
     discountBadge: {
         position: 'absolute',
@@ -221,7 +288,7 @@ const styles = StyleSheet.create({
 
     discountText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
 
-    detailsContainer: { paddingHorizontal: 30, marginTop: 45 },
+    detailsContainer: { paddingHorizontal: 30, marginTop: 5 },
 
     titleRow: {
         flexDirection: 'row',
@@ -266,7 +333,7 @@ const styles = StyleSheet.create({
     trustRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 20,
+        marginBottom: 5,
         marginTop: 20,
     },
     trustItem: {
@@ -285,7 +352,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 15,
-        marginTop: 70,
+        marginTop: 30,
     },
 
     quantitySelector: {

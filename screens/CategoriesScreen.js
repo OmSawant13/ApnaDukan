@@ -6,6 +6,7 @@ import {
     SafeAreaView,
     TextInput,
     FlatList,
+    ScrollView,
     StatusBar,
     Dimensions,
     TouchableOpacity,
@@ -13,9 +14,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useProducts } from '../context/ProductContext';
+import ProductCard from '../components/ProductCard';
+import { useLanguage } from '../context/LanguageContext';
 
 const { width } = Dimensions.get('window');
-const cardWidth = (width / 2) - 18; // Proper spacing fix
+const cardWidth = (width / 2) - 24; // Increased margin for better horizontal gap
 
 // --- INTERNAL CARD COMPONENT ---
 const CategoryCard = ({ title, subtitle, tag, image, bgColor, tagColor, onPress }) => (
@@ -46,15 +49,33 @@ const CategoryCard = ({ title, subtitle, tag, image, bgColor, tagColor, onPress 
 
 // --- MAIN SCREEN ---
 export default function CategoriesScreen({ navigation }) {
-    const { categories } = useProducts();
+    const { categories, products } = useProducts();
+    const { t, translateProduct, bulkTranslate, currentLanguage } = useLanguage();
     const [searchQuery, setSearchQuery] = useState('');
 
+    const query = searchQuery.toLowerCase().trim();
+
     const filteredCategories = categories.filter(cat =>
-        cat.name.toLowerCase().includes(searchQuery.toLowerCase())
+        (cat.name || '').toLowerCase().includes(query)
     );
 
+    const filteredProducts = products.filter(prod =>
+        (prod.name || '').toLowerCase().includes(query) && prod.stock
+    );
+
+    // AI Translation Magic - Trigger bulk translation when data or language changes
+    React.useEffect(() => {
+        if (categories.length > 0 || products.length > 0) {
+            const categoryNames = categories.map(c => c.name);
+            const productNames = products.map(p => p.name);
+            bulkTranslate([...categoryNames, ...productNames]);
+        }
+    }, [categories, products, currentLanguage]);
+
+    const isSearching = query.length > 0;
+
     const getCategoryImage = (name) => {
-        const n = name.toLowerCase();
+        const n = (name || '').toLowerCase();
         // Yahan maine snacks_cat hata diya hai taaki error na aaye
         if (n.includes('veg')) return require('../assets/images/veg_cat.png');
         if (n.includes('fruit')) return require('../assets/images/fruit_cat.png');
@@ -71,11 +92,11 @@ export default function CategoriesScreen({ navigation }) {
 
                 {/* HEADER */}
                 <View style={styles.header}>
-                    <Text style={styles.mainTitle}>All Categories</Text>
+                    <Text style={styles.mainTitle}>{t('all_categories')}</Text>
                     <View style={styles.searchBar}>
                         <Ionicons name="search" size={18} color="#9ca3af" />
                         <TextInput
-                            placeholder="Search categories..."
+                            placeholder={t('search_placeholder')}
                             placeholderTextColor="#9ca3af"
                             style={styles.searchInput}
                             value={searchQuery}
@@ -84,39 +105,74 @@ export default function CategoriesScreen({ navigation }) {
                     </View>
                 </View>
 
-                {/* GRID */}
-                <FlatList
-                    data={filteredCategories}
-                    keyExtractor={(item) => item.id}
-                    numColumns={2}
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={styles.list}
-                    columnWrapperStyle={styles.columnWrapper}
-                    renderItem={({ item }) => (
-                        <CategoryCard
-                            title={item.name}
-                            subtitle={`${item.items || 0} items`}
-                            tag={item.type === 'weight' ? 'Fresh' : 'Packet'}
-                            image={getCategoryImage(item.name)}
-                            bgColor="#ffffff"
-                            tagColor={item.type === 'weight' ? '#059669' : '#db2777'}
-                            onPress={() =>
-                                navigation.navigate('CategoryProducts', {
-                                    categoryId: item.id,
-                                    categoryName: item.name,
-                                    categoryType: item.type,
-                                })
-                            }
-                        />
+                {/* SEARCH RESULTS OR GRID */}
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
+
+                    {/* CATEGORIES SECTION */}
+                    {(!isSearching || filteredCategories.length > 0) && (
+                        <View style={styles.section}>
+                            {isSearching && <Text style={styles.sectionHeaderLabel}>{t('categories')}</Text>}
+                            <View style={styles.grid}>
+                                {filteredCategories.map((item, index) => (
+                                    <CategoryCard
+                                        key={(item.id || item._id || index).toString()}
+                                        title={translateProduct(item.name)}
+                                        subtitle={`${item.items || 0} ${t('items')}`}
+                                        tag={item.type === 'weight' ? t('fresh') : t('packet')}
+                                        image={item.image || getCategoryImage(item.name)}
+                                        bgColor="#ffffff"
+                                        tagColor={item.type === 'weight' ? '#059669' : '#db2777'}
+                                        onPress={() =>
+                                            navigation.navigate('CategoryProducts', {
+                                                categoryId: item.id,
+                                                categoryName: item.name,
+                                                categoryType: item.type,
+                                            })
+                                        }
+                                    />
+                                ))}
+                            </View>
+                        </View>
                     )}
-                />
+
+                    {/* PRODUCTS SECTION (ONLY WHEN SEARCHING) */}
+                    {isSearching && filteredProducts.length > 0 && (
+                        <View style={[styles.section, { marginTop: 24 }]}>
+                            <Text style={styles.sectionHeaderLabel}>{t('products')}</Text>
+                            <View style={styles.productsGrid}>
+                                {filteredProducts.map((item, index) => (
+                                    <ProductCard
+                                        key={(item.id || item._id || index).toString()}
+                                        item={item}
+                                        style={styles.searchProductCard}
+                                        onPress={() => {
+                                            if (item.type === 'weight' || item.unit === 'kg') {
+                                                navigation.navigate('WeightProductDetails', { item });
+                                            } else {
+                                                navigation.navigate('ProductDetails', { item });
+                                            }
+                                        }}
+                                    />
+                                ))}
+                            </View>
+                        </View>
+                    )}
+
+                    {isSearching && filteredCategories.length === 0 && filteredProducts.length === 0 && (
+                        <View style={styles.noResults}>
+                            <Ionicons name="search-outline" size={48} color="#e2e8f0" />
+                            <Text style={styles.noResultsText}>No matches found for "{searchQuery}"</Text>
+                        </View>
+                    )}
+
+                </ScrollView>
             </SafeAreaView>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff', paddingTop: 20 },
+    container: { flex: 1, backgroundColor: '#fff', paddingTop: 35 },
     header: {
         paddingHorizontal: 16,
         paddingVertical: 14,
@@ -146,6 +202,44 @@ const styles = StyleSheet.create({
     },
     list: {
         padding: 12,
+        paddingBottom: 150,
+    },
+    section: {
+        width: '100%',
+    },
+    sectionHeaderLabel: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 16,
+        marginLeft: 4,
+    },
+    grid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        paddingHorizontal: 4, // Added slight side padding
+    },
+    productsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+        paddingLeft: 4,
+    },
+    searchProductCard: {
+        marginRight: 0,
+        marginBottom: 12,
+        width: (width - 44) / 2, // 2 column product grid in search
+    },
+    noResults: {
+        alignItems: 'center',
+        marginTop: 60,
+    },
+    noResultsText: {
+        fontSize: 16,
+        color: '#64748b',
+        marginTop: 12,
+        fontWeight: '500',
     },
     columnWrapper: {
         justifyContent: 'space-between',
@@ -154,12 +248,11 @@ const styles = StyleSheet.create({
     // --- CARD STYLES ---
     card: {
         width: cardWidth,
-        height: 120, // Reduced from 140
+        height: 120,
         borderRadius: 20,
         backgroundColor: '#fff',
-        // padding: 12, // Removed padding
-        overflow: 'hidden', // Contain image
-        // Shadow for better look
+        marginBottom: 16, // Added spacing at bottom
+        overflow: 'hidden',
         elevation: 3,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },

@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useProducts } from '../context/ProductContext';
 import ProductCard from '../components/ProductCard';
+import { useLanguage } from '../context/LanguageContext';
 
 const { width } = Dimensions.get('window');
 const SPACING = 12; // Gap between cards
@@ -21,6 +22,7 @@ const itemWidth = (width - (PADDING * 2) - SPACING) / 2;
 export default function CategoryProductsScreen({ navigation, route }) {
     const { categoryId, categoryName } = route.params;
     const { products } = useProducts();
+    const { t, translateProduct } = useLanguage();
 
     const categoryProducts = products.filter(
         p => p.categoryId === categoryId && p.stock
@@ -50,7 +52,7 @@ export default function CategoryProductsScreen({ navigation, route }) {
                         <Ionicons name="arrow-back" size={22} color="#111827" />
                     </TouchableOpacity>
 
-                    <Text style={styles.headerTitle}>{categoryName}</Text>
+                    <Text style={styles.headerTitle}>{translateProduct(categoryName)}</Text>
 
                     <View style={{ width: 22 }} />
                 </View>
@@ -58,7 +60,7 @@ export default function CategoryProductsScreen({ navigation, route }) {
                 {/* GRID */}
                 <FlatList
                     data={categoryProducts}
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item, index) => (item.id || item._id || index).toString()}
                     numColumns={2}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.list}
@@ -89,7 +91,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#f8fafc',
-        paddingTop: 5,
+        paddingTop: 12,
     },
 
     header: {
@@ -104,7 +106,7 @@ const styles = StyleSheet.create({
     },
 
     headerTitle: {
-        fontSize: 18,
+        fontSize: 16, // Reduced from 18
         fontWeight: '700',
         color: '#111827',
         textTransform: 'capitalize',
@@ -113,7 +115,7 @@ const styles = StyleSheet.create({
     list: {
         paddingHorizontal: PADDING,
         paddingTop: 12,
-        paddingBottom: 20,
+        paddingBottom: 120,
     },
 
     card: {

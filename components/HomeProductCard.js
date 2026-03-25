@@ -4,12 +4,18 @@ import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 // Card width = (Screen Width - Padding - Gap) / 2.5 items visible
-const CARD_WIDTH = width * 0.35;
+const CARD_WIDTH = width * 0.37;
 
 import { useOrders } from '../context/OrderContext';
+import { useLanguage } from '../context/LanguageContext';
 
-export default function HomeProductCard({ item, onPress, style, imageHeight = 80 }) {
+export default function HomeProductCard({
+    item,
+    onPress,
+    style,
+}) {
     const { cart, addToCart, removeFromCart, updateQuantity } = useOrders();
+    const { t, translateProduct } = useLanguage();
 
     // Find if item is in cart
     const cartItem = cart.find(c => c.id === item.id);
@@ -19,27 +25,50 @@ export default function HomeProductCard({ item, onPress, style, imageHeight = 80
         if (item.type === 'weight') {
             onPress(); // Navigate to details for weight
         } else {
+            // Check Stock for initial add
+            if (item.stock && item.stockCount <= 0) {
+                alert('Out of Stock');
+                return;
+            }
+            if (item.stock && 1 > item.stockCount) {
+                alert(`Only ${item.stockCount} items available.`);
+                return;
+            }
             addToCart(item);
         }
     };
 
     // Direct increment/decrement for card
-    const handleIncrement = () => addToCart(item);
+    const handleIncrement = () => {
+        // Check Stock Limit
+        if (item.stock && quantity >= item.stockCount) {
+            alert(`Stock Limit Reached!\nOnly ${item.stockCount} items available.`);
+            return;
+        }
+        addToCart(item);
+    };
     const handleDecrement = () => updateQuantity(item.id, -1);
 
     return (
-        <TouchableOpacity style={[styles.cardContainer, style]} onPress={onPress} activeOpacity={1}>
+        <TouchableOpacity
+            style={[styles.cardContainer, style]}
+            onPress={onPress}
+            activeOpacity={1}
+        >
             {/* Image Placeholder */}
-            <View style={[styles.imageContainer, { height: imageHeight }]}>
+            <View style={styles.imageContainer}>
                 {/* Replace with actual Image component later */}
                 {/* <Image source={{ uri: item.image }} style={styles.image} resizeMode="contain" /> */}
-                <Image source={item.image} style={styles.image} resizeMode="contain" />
+                <Image source={item.image} style={styles.image} resizeMode="cover" />
             </View>
 
             {/* Details */}
             <View style={styles.detailsContainer}>
-                <Text style={styles.title} numberOfLines={2}>{item.name}</Text>
-                <Text style={styles.weight}>{item.subtitle || item.weight}</Text>
+                <Text style={styles.title} numberOfLines={2}>{translateProduct(item.name)}</Text>
+                <Text style={styles.weight}>
+                    {translateProduct(item.subtitle) || translateProduct(item.weight)}
+                    {(!item.subtitle && !item.weight && item.unit) ? t(item.unit) : ''}
+                </Text>
 
                 <View style={styles.priceRow}>
                     <Text style={styles.price}>₹{item.price}</Text>
@@ -51,7 +80,7 @@ export default function HomeProductCard({ item, onPress, style, imageHeight = 80
             <View style={styles.actionContainer}>
                 {quantity === 0 ? (
                     <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
-                        <Text style={styles.addText}>ADD</Text>
+                        <Text style={styles.addText}>{t('add')}</Text>
                         <Ionicons name="add" size={16} color="#042e23" />
                     </TouchableOpacity>
                 ) : (
@@ -97,6 +126,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 8,
+        overflow: 'hidden',
     },
     image: {
         width: '100%',

@@ -12,10 +12,17 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useOrders } from '../context/OrderContext';
+import { useLanguage } from '../context/LanguageContext';
+import { Alert } from 'react-native';
 
 const WeightProductDetailsScreen = ({ navigation, route }) => {
     // Get item from navigation params
     const { item } = route.params || {};
+    const { addToCart, cart } = useOrders(); // Access cart
+    const { t, translateProduct } = useLanguage();
+
+    const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
 
     // Default Fallback Data
     const product = item || {
@@ -58,6 +65,19 @@ const WeightProductDetailsScreen = ({ navigation, route }) => {
         }
     };
 
+    const handleAddToCart = () => {
+        const wt = parseFloat(customWeight);
+        const pr = parseFloat(customPrice);
+
+        if (!wt || isNaN(wt) || wt <= 0) {
+            Alert.alert('Invalid Weight', 'Please enter a valid weight');
+            return;
+        }
+
+        addToCart(product, wt, pr);
+        navigation.navigate('Cart');
+    };
+
     const displayedPrice = parseFloat(customPrice || 0);
 
     const toggleFavorite = () => setIsFavorite(!isFavorite);
@@ -75,12 +95,14 @@ const WeightProductDetailsScreen = ({ navigation, route }) => {
                     >
                         <Ionicons name="chevron-back" size={24} color="#1f2937" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Product Details</Text>
+                    <Text style={styles.headerTitle}>{t('product_details')}</Text>
                     <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Cart')}>
                         <Ionicons name="cart-outline" size={24} color="#1f2937" />
-                        <View style={styles.badge}>
-                            <Text style={styles.badgeText}>2</Text>
-                        </View>
+                        {cartItemCount > 0 && (
+                            <View style={styles.badge}>
+                                <Text style={styles.badgeText}>{cartItemCount}</Text>
+                            </View>
+                        )}
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>
@@ -101,7 +123,7 @@ const WeightProductDetailsScreen = ({ navigation, route }) => {
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
                         >
-                            <Text style={styles.discountText}>OFFER</Text>
+                            <Text style={styles.discountText}>{t('offer')}</Text>
                         </LinearGradient>
                     </View>
                 </View>
@@ -111,8 +133,8 @@ const WeightProductDetailsScreen = ({ navigation, route }) => {
                     {/* Title & Favorite */}
                     <View style={styles.titleRow}>
                         <View style={styles.titleWrapper}>
-                            <Text style={styles.productName}>{product.name}</Text>
-                            <Text style={styles.rateSubheading}>₹{product.price}/kg</Text>
+                            <Text style={styles.productName}>{translateProduct(product.name)}</Text>
+                            <Text style={styles.rateSubheading}>₹{product.price}/{t('kg')}</Text>
                         </View>
                         <TouchableOpacity
                             style={[
@@ -133,7 +155,7 @@ const WeightProductDetailsScreen = ({ navigation, route }) => {
                     <View style={styles.calculatorContainer}>
                         {/* Weight Input Container */}
                         <View style={styles.calcInputBox}>
-                            <Text style={styles.calcLabel}>Weight (g)</Text>
+                            <Text style={styles.calcLabel}>{t('weight_g')}</Text>
                             <View style={styles.inputWrapper}>
                                 <TextInput
                                     style={styles.calcInput}
@@ -155,7 +177,7 @@ const WeightProductDetailsScreen = ({ navigation, route }) => {
 
                         {/* Price Input Container */}
                         <View style={styles.calcInputBox}>
-                            <Text style={styles.calcLabel}>Price (₹)</Text>
+                            <Text style={styles.calcLabel}>{t('price_rs')}</Text>
                             <View style={styles.inputWrapper}>
                                 <Text style={styles.currencyPrefix}>₹</Text>
                                 <TextInput
@@ -172,7 +194,7 @@ const WeightProductDetailsScreen = ({ navigation, route }) => {
                     {/* Action Row */}
                     <View style={styles.actionRow}>
                         {/* Add to Cart Button */}
-                        <TouchableOpacity style={styles.addToCartBtn}>
+                        <TouchableOpacity style={styles.addToCartBtn} onPress={handleAddToCart}>
                             <LinearGradient
                                 colors={['#10b981', '#059669']}
                                 style={styles.btnGradient}
@@ -181,7 +203,7 @@ const WeightProductDetailsScreen = ({ navigation, route }) => {
                             >
                                 <Ionicons name="cart-outline" size={20} color="#fff" />
                                 <Text style={styles.btnText}>
-                                    Add {customWeight}g
+                                    {t('add')} {customWeight}g
                                 </Text>
                                 <View style={styles.verticalDivider} />
                                 <Text style={styles.btnPrice}>₹{displayedPrice}</Text>
@@ -254,11 +276,11 @@ const styles = StyleSheet.create({
     imageSection: {
         alignItems: 'center',
         justifyContent: 'center',
-        marginVertical: 20,
+        marginVertical: 10,
     },
     productImage: {
-        width: 320,
-        height: 320,
+        width: 280,
+        height: 280,
         borderRadius: 40,
     },
     discountBadge: {
@@ -279,7 +301,7 @@ const styles = StyleSheet.create({
     },
     detailsContainer: {
         paddingHorizontal: 20,
-        marginTop: 20,
+        marginTop: 10,
     },
     titleRow: {
         flexDirection: 'row',
@@ -318,7 +340,7 @@ const styles = StyleSheet.create({
 
     // Calculator Styles
     calculatorContainer: {
-        marginTop: 15,
+        marginTop: 5,
         gap: 0,
         paddingHorizontal: 5,
     },
@@ -388,7 +410,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center', // Centered single button
-        marginTop: 60,
+        marginTop: 45,
         paddingHorizontal: 40,
     },
     addToCartBtn: {

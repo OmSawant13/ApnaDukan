@@ -1,22 +1,41 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import React from 'react';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.32; // Comfortable width
 
+import { useLanguage } from '../context/LanguageContext';
+import { useOrders } from '../context/OrderContext';
+
 export default function DailyItemCard({ item, onPress }) {
-    const [quantity, setQuantity] = useState(0);
+    const { t, translateProduct } = useLanguage();
+    const { cart, addToCart, removeFromCart, updateQuantity } = useOrders();
+    
+    // Find if this item is in global cart
+    const cartItem = cart.find(i => i.id === (item.id || item._id));
+    const quantity = cartItem ? cartItem.quantity : 0;
+    const isWeightBased = item.type === 'weight' || item.unit === 'kg';
 
     const handleAdd = () => {
-        if (item.type === 'weight') {
-            onPress();
+        if (isWeightBased) {
+            onPress(); // Navigate to weight calculator
         } else {
-            setQuantity(1);
+            addToCart(item);
         }
     };
-    const handleIncrement = () => setQuantity(prev => prev + 1);
-    const handleDecrement = () => setQuantity(prev => (prev > 1 ? prev - 1 : 0));
+
+    const handleIncrement = () => {
+        if (!isWeightBased) {
+            updateQuantity(item.id || item._id, 1);
+        }
+    };
+
+    const handleDecrement = () => {
+        if (!isWeightBased) {
+            updateQuantity(item.id || item._id, -1);
+        }
+    };
 
     // Fallback accent color if not provided
     const accentColor = item.accent || '#166534';
@@ -30,11 +49,18 @@ export default function DailyItemCard({ item, onPress }) {
             {/* Top Section: Image & Info */}
             <View>
                 <View style={styles.imageContainer}>
-                    <Ionicons name="cube-outline" size={36} color="#cbd5e1" />
+                    {item.image ? (
+                        <Image source={item.image} style={styles.image} resizeMode="cover" />
+                    ) : (
+                        <Ionicons name="cube-outline" size={36} color="#cbd5e1" />
+                    )}
                 </View>
 
-                <Text style={styles.title} numberOfLines={1}>{item.name}</Text>
-                <Text style={styles.weight}>{item.subtitle || item.weight}</Text>
+                <Text style={styles.title} numberOfLines={1}>{translateProduct(item.name)}</Text>
+                <Text style={styles.weight}>
+                    {translateProduct(item.subtitle) || translateProduct(item.weight)}
+                    {(!item.subtitle && !item.weight && item.unit) ? t(item.unit) : ''}
+                </Text>
             </View>
 
             {/* Bottom Section: Price & Action */}
@@ -44,12 +70,15 @@ export default function DailyItemCard({ item, onPress }) {
                     {item.mrp && <Text style={styles.mrp}>₹{item.mrp}</Text>}
                 </View>
 
-                {quantity === 0 ? (
+                {/* PCS items show counter, Weight items always show ADD button */}
+                {(quantity === 0 || isWeightBased) ? (
                     <TouchableOpacity
                         style={[styles.addButton, { borderColor: accentColor }]}
                         onPress={handleAdd}
                     >
-                        <Text style={[styles.addText, { color: accentColor }]}>ADD</Text>
+                        <Text style={[styles.addText, { color: accentColor }]}>
+                            {isWeightBased && cartItem ? t('added_to_cart') : t('add')}
+                        </Text>
                     </TouchableOpacity>
                 ) : (
                     <View style={[styles.qtyControl, { backgroundColor: accentColor }]}>
@@ -92,6 +121,11 @@ const styles = StyleSheet.create({
         backgroundColor: '#f8fafc',
         borderRadius: 8,
         marginBottom: 8,
+        overflow: 'hidden',
+    },
+    image: {
+        width: '100%',
+        height: '100%',
     },
     title: {
         fontSize: 14, // Increased from 13

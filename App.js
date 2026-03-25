@@ -10,24 +10,33 @@ import { ProductProvider } from './context/ProductContext';
 import { OrderProvider } from './context/OrderContext';
 
 import { AuthProvider } from './context/AuthContext';
+import { SocketProvider } from './context/SocketContext';
 import { CreditProvider } from './context/CreditContext';
+import { LanguageProvider } from './context/LanguageContext';
+import { ShopProvider } from './context/ShopContext';
 
 export default function App() {
   return (
     <SafeAreaProvider>
       <View style={styles.container}>
-        <AuthProvider>
-          <ProductProvider>
-            <CreditProvider>
-              <OrderProvider>
-                <NavigationContainer>
-                  <AppNavigator />
-                </NavigationContainer>
-              </OrderProvider>
-            </CreditProvider>
-          </ProductProvider>
-        </AuthProvider>
-        <StatusBar style="auto" />
+        <LanguageProvider>
+          <SocketProvider>
+            <AuthProvider>
+              <ShopProvider>
+                <ProductProvider>
+                  <CreditProvider>
+                    <OrderProvider>
+                      <NavigationContainer>
+                        <AppNavigator />
+                      </NavigationContainer>
+                    </OrderProvider>
+                  </CreditProvider>
+                </ProductProvider>
+              </ShopProvider>
+            </AuthProvider>
+          </SocketProvider>
+        </LanguageProvider>
+        <StatusBar style="light" />
       </View>
     </SafeAreaProvider>
   );
@@ -36,6 +45,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
   },
 });

@@ -17,50 +17,89 @@ import ProductCard from "../components/ProductCard";
 import CategoryShowcaseCard from "../components/CategoryShowcaseCard";
 import DailyItemCard from "../components/DailyItemCard";
 import { useProducts } from '../context/ProductContext'; // Import Context
+import { useOrders } from '../context/OrderContext'; // Import Order Context
+import { useLanguage } from '../context/LanguageContext'; // Import Language Context
+import { useShop } from '../context/ShopContext';
 
 // Get screen width for the curve calculation
 const { width } = Dimensions.get('window');
 
-// Static Showcase Data (Can be dynamic later)
-const CATEGORY_SHOWCASE = [
-    { id: 1, title: 'Soft Drinks', subtitle: 'Cool & Fizzy', tag: 'UPTO 20% OFF', image: require('../assets/images/soft_drinks_v3.png'), color: '#db2777', bgColor: '#fce7f3', catId: '3' },
-    { id: 2, title: 'Spices', subtitle: 'Authentic Taste', tag: 'Fresh', image: require('../assets/images/spices_v3.png'), color: '#d97706', bgColor: '#F9E9BA', catId: '5' },
-    { id: 3, title: 'Cleaning', subtitle: 'Essentials', tag: 'Best Seller', image: require('../assets/images/cleaning_v3.png'), color: '#C2E3F7', bgColor: '#C2E3F6', catId: '6' },
-    { id: 4, title: 'Baby Care', subtitle: 'Gentle & Safe', tag: 'Trusted', image: require('../assets/images/baby_care_v3.png'), color: '#D6D0EB', bgColor: '#D6D0EB', catId: '4' },
-];
+// Helper for consistent styling based on category name
+const getCategoryStyle = (name) => {
+    const n = (name || '').toLowerCase(); // Safety check for undefined/null
+    if (n.includes('soft')) return { subtitle: 'Cool & Fizzy', color: '#db2777', bgColor: '#fce7f3', image: require('../assets/images/soft_drinks_v3.png'), tag: 'UPTO 20% OFF' };
+    if (n.includes('spice')) return { subtitle: 'Authentic Taste', color: '#d97706', bgColor: '#F9E9BA', image: require('../assets/images/spices_v3.png'), tag: 'Fresh' };
+    if (n.includes('cleaning')) return { subtitle: 'Essentials', color: '#0ea5e9', bgColor: '#e0f2fe', image: require('../assets/images/cleaning_v3.png'), tag: 'Best Seller' };
+    if (n.includes('baby')) return { subtitle: 'Gentle & Safe', color: '#7c3aed', bgColor: '#ede9fe', image: require('../assets/images/baby_care_v3.png'), tag: 'Trusted' };
+    if (n.includes('bakery')) return { subtitle: 'Oven Fresh', color: '#ea580c', bgColor: '#ffedd5', image: require('../assets/images/bakery_cat.png'), tag: 'Hot' };
+    if (n.includes('dairy')) return { subtitle: 'Farm Fresh', color: '#0284c7', bgColor: '#e0f2fe', image: require('../assets/images/dairy_cat.png'), tag: 'Daily' };
+    if (n.includes('veg')) return { subtitle: 'Farm to Home', color: '#16a34a', bgColor: '#dcfce7', image: require('../assets/images/veg_cat.png'), tag: 'Healthy' };
+
+    return { subtitle: 'Explore', color: '#6366f1', bgColor: '#e0e7ff', image: require('../assets/images/spices_v3.png'), tag: 'New' };
+};
 
 export default function HomeScreen({ navigation }) {
-    const { products, categories } = useProducts();
+    const { products, categories, loading } = useProducts();
+    const { cart } = useOrders();
+    const { t, translateProduct, bulkTranslate, currentLanguage } = useLanguage();
+    const { selectedShop } = useShop();
+
+    const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
+
+    // Bulk translate products and categories when they load
+    React.useEffect(() => {
+        if (products.length > 0) {
+            const productNames = products.map(p => p.name);
+            const categoryNames = categories.map(c => c.name);
+            bulkTranslate([...productNames, ...categoryNames]);
+        }
+    }, [products, categories, currentLanguage]);
 
     // --- Data Filtering Logic ---
     const safeProducts = Array.isArray(products) ? products : [];
 
-    // 1. You Might Need (Random/Mix of Veg & Fruits)
-    const featuredProducts = safeProducts.filter(p => (p.categoryId === '1' || p.categoryId === '2') && p.stock).slice(0, 5);
+    // --- Dynamic Category Filtering ---
+    const getCategoryIds = (names) => {
+        if (!categories || categories.length === 0) return [];
+        return categories
+            .filter(c => names.some(n => (c.name || '').toLowerCase().includes(n.toLowerCase())))
+            .map(c => c.id);
+    };
 
-    // 2. Daily Use (Dairy & Bakery)
-    const dailyUseProducts = safeProducts.filter(p => (p.categoryId === '3' || p.categoryId === '4') && p.stock).map(p => ({
-        ...p,
-        weight: p.unit, // Map unit to weight for card compatibility
-        bgColor: '#eff6ff',
-        accent: '#3b82f6'
-    }));
+    // 1. Fresh Arrivals (STRICTLY Manual Selection) - LIMIT 7
+    const featuredProducts = safeProducts
+        .filter(p => p.stock && p.isFeatured)
+        .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)) // Show last featured first
+        .slice(0, 7);
 
-    // 3. Snacks (Snacks Category)
-    const snacksProducts = safeProducts.filter(p => p.categoryId === '6' && p.stock).map(p => ({
-        ...p,
-        weight: p.unit,
-        bgColor: '#fff7ed',
-        accent: '#d97706'
-    }));
+    // Original limit was 5, now 7 for all sections
 
-    // 4. Spices/Pulses (Spices Category)
-    const coursesProducts = safeProducts.filter(p => p.categoryId === '5' && p.stock).map(p => ({
-        ...p,
-        weight: p.unit,
-        bgColor: '#fefce8',
-        accent: '#ca8a04'
-    }));
+    // 2. Daily Use (AI Tagged: 'daily' OR Fallback Keywords)
+    const dailyIds = getCategoryIds(['dairy', 'milk', 'curd', 'paneer', 'butter', 'cheese', 'bakery', 'bread', 'essential']);
+    const dailyUseProducts = safeProducts
+        .filter(p => (p.smartCategory === 'daily' || dailyIds.includes(p.categoryId)) && p.stock)
+        .map(p => ({ ...p, weight: p.unit, bgColor: '#eff6ff', accent: '#3b82f6' }))
+        .slice(0, 7);
+
+    // 3. Snacks (AI Tagged: 'snacks' OR Fallback Keywords)
+    const snackIds = getCategoryIds(['snack', 'biscuit', 'chips', 'namkeen', 'chocolate', 'drink', 'chai']);
+    const snacksProducts = safeProducts
+        .filter(p => (p.smartCategory === 'snacks' || snackIds.includes(p.categoryId)) && p.stock)
+        .map(p => ({ ...p, weight: p.unit, bgColor: '#fff7ed', accent: '#d97706' }))
+        .slice(0, 7);
+
+    // 4. Spices/Pulses (AI Tagged: 'cooking' OR Fallback Keywords)
+    const spiceIds = getCategoryIds(['spice', 'masala', 'pulse', 'dal', 'rice', 'atta', 'oil']);
+    const coursesProducts = safeProducts
+        .filter(p => (p.smartCategory === 'cooking' || spiceIds.includes(p.categoryId)) && p.stock)
+        .map(p => ({ ...p, weight: p.unit, bgColor: '#fefce8', accent: '#ca8a04' }))
+        .slice(0, 7);
+
+    // 5. Cleaning & Household (AI Tagged: 'household')
+    const cleaningProducts = safeProducts
+        .filter(p => p.smartCategory === 'household' && p.stock)
+        .map(p => ({ ...p, weight: p.unit, bgColor: '#f0f9ff', accent: '#0ea5e9' }))
+        .slice(0, 7);
 
 
     const handleProductPress = (item) => {
@@ -82,7 +121,7 @@ export default function HomeScreen({ navigation }) {
             <StatusBar barStyle="light-content" backgroundColor="#042e23" />
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 100 }}
+                contentContainerStyle={{ paddingBottom: 120 }}
                 bounces={false}
                 overScrollMode="never"
             >
@@ -95,23 +134,25 @@ export default function HomeScreen({ navigation }) {
                             <View style={styles.searchBar}>
                                 <Ionicons name="search" size={20} color="#9ca3af" />
                                 <TextInput
-                                    placeholder='Search for "Grocery"'
+                                    placeholder={t('search_placeholder')}
                                     placeholderTextColor="#9ca3af"
                                     style={styles.searchInput}
                                 />
                             </View>
                             <TouchableOpacity style={styles.cartBtn} onPress={() => navigation.navigate('Cart')}>
                                 <Ionicons name="cart-outline" size={24} color="#000" />
-                                <View style={styles.badge}>
-                                    <Text style={styles.badgeText}>2</Text>
-                                </View>
+                                {cartItemCount > 0 && (
+                                    <View style={styles.badge}>
+                                        <Text style={styles.badgeText}>{cartItemCount}</Text>
+                                    </View>
+                                )}
                             </TouchableOpacity>
                         </View>
 
                         <View style={styles.locationSection}>
-                            <Text style={styles.locationLabel}>Pickup From</Text>
+                            <Text style={styles.locationLabel}>{t('pickup_from')}</Text>
                             <View style={styles.locationRow}>
-                                <Text style={styles.locationText}>Jai Malhar Store</Text>
+                                <Text style={styles.locationText}>{selectedShop?.name || 'Jai Malhar Store'}</Text>
                             </View>
                         </View>
 
@@ -134,12 +175,21 @@ export default function HomeScreen({ navigation }) {
                                 // Fallback if data is insufficient? Current dummy data has enough.
 
                                 return curveData.map((item, index) => {
-                                    const relativeIndex = index - 1.5;
-                                    const translateY = Math.abs(relativeIndex) * Math.abs(relativeIndex) * 14;
+                                    // Individual position handling for each of the 4 circles
+                                    let translateY = 14; // Default
+
+                                    if (curveData.length === 4) {
+                                        // Standard 4-item symmetrical curve
+                                        const positions = { 0: 35, 1: 5, 2: 5, 3: 35 };
+                                        translateY = positions[index] || 15;
+                                    } else if (curveData.length === 2) {
+                                        // Perfect sync for 2 items
+                                        translateY = 15;
+                                    }
 
                                     return (
                                         <TouchableOpacity
-                                            key={item.id}
+                                            key={(item.id || item._id || index).toString()}
                                             style={[styles.curveCircleWrapper, { transform: [{ translateY: -translateY }] }]}
                                             onPress={() => navigation.navigate('CategoryProducts', { categoryId: item.id, categoryName: item.name })}
                                             activeOpacity={0.8}
@@ -149,7 +199,7 @@ export default function HomeScreen({ navigation }) {
                                                     <Ionicons name={item.icon || 'grid'} size={32} color="#f59e0b" />
                                                 </View>
                                             </View>
-                                            <Text style={styles.circleLabel} numberOfLines={1}>{item.name}</Text>
+                                            <Text style={styles.circleLabel} numberOfLines={1}>{translateProduct(item.name)}</Text>
                                         </TouchableOpacity>
                                     );
                                 });
@@ -164,9 +214,9 @@ export default function HomeScreen({ navigation }) {
 
                     {/* 'You might need' Section (Featured) */}
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Fresh Arrivals</Text>
+                        <Text style={styles.sectionTitle}>{t('fresh_arrivals')}</Text>
                         <TouchableOpacity>
-                            <Text style={styles.seeMore}>See more</Text>
+                            <Text style={styles.seeMore}>{t('see_more')}</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -176,23 +226,24 @@ export default function HomeScreen({ navigation }) {
                             showsHorizontalScrollIndicator={false}
                             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
                         >
-                            {featuredProducts.length > 0 ? featuredProducts.map((item) => (
+                            {featuredProducts.length > 0 ? featuredProducts.map((item, index) => (
                                 <HomeProductCard
-                                    key={item.id}
-                                    item={{ ...item, weight: item.unit }} // Map unit to weight
+                                    key={(item.id || item._id || index).toString()}
                                     onPress={() => handleProductPress(item)}
                                 />
                             )) : (
-                                <Text style={{ marginLeft: 20, color: '#9ca3af' }}>Start adding products from Shopkeeper Mode!</Text>
+                                <Text style={{ marginLeft: 20, color: '#9ca3af' }}>
+                                    {loading ? t('loading') : 'No products available'}
+                                </Text>
                             )}
                         </ScrollView>
                     </View>
 
                     {/* Category Showcase Section (Horizontal) */}
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Explore Categories</Text>
-                        <TouchableOpacity>
-                            <Text style={styles.seeMore}>See all</Text>
+                        <Text style={styles.sectionTitle}>{t('explore_categories')}</Text>
+                        <TouchableOpacity onPress={() => navigation.navigate('Categories')}>
+                            <Text style={styles.seeMore}>{t('see_all')}</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -202,25 +253,43 @@ export default function HomeScreen({ navigation }) {
                             showsHorizontalScrollIndicator={false}
                             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
                         >
-                            {categories.length > 0 ? categories.slice(0, 6).map((item) => (
-                                <CategoryShowcaseCard
-                                    key={item.id}
-                                    title={item.name}
-                                    subtitle={item.type === 'weight' ? 'Fresh Stock' : 'Best Sellers'}
-                                    tag="Explore"
-                                    // icon={item.icon}
-                                    image={require('../assets/images/spices_v3.png')} // Fallback or map specific images if available
-                                    color={item.type === 'weight' ? '#059669' : '#db2777'}
-                                    bgColor={item.type === 'weight' ? '#ecfdf5' : '#fce7f3'}
-                                    onPress={() => navigation.navigate('CategoryProducts', {
-                                        categoryId: item.id,
-                                        categoryName: item.name,
-                                        categoryType: item.type
-                                    })}
-                                />
-                            )) : (
-                                <Text style={{ marginLeft: 20, color: '#9ca3af' }}>Add categories in Shopkeeper mode</Text>
-                            )}
+                            {/* Category Showcase - Fixed 4 Cards */}
+                            {(() => {
+                                const SHOWCASE = [
+                                    { title: t('soft_drinks'), subtitle: t('cool_fizzy'), color: '#db2777', bgColor: '#fce7f3', image: require('../assets/images/soft_drinks_v3.png'), tag: t('upto_20_off') },
+                                    { title: t('spices'), subtitle: t('authentic_taste'), color: '#d97706', bgColor: '#F9E9BA', image: require('../assets/images/spices_v3.png'), tag: t('fresh_tag') },
+                                    { title: t('cleaning'), subtitle: t('essentials'), color: '#0ea5e9', bgColor: '#e0f2fe', image: require('../assets/images/cleaning_v3.png'), tag: t('best_seller') },
+                                    { title: t('baby_care'), subtitle: t('gentle_safe'), color: '#7c3aed', bgColor: '#ede9fe', image: require('../assets/images/baby_care_v3.png'), tag: t('trusted') },
+                                ];
+
+                                return SHOWCASE.map((item, index) => {
+                                    // Find real category ID
+                                    const realCat = categories.find(c => c.name.toLowerCase() === item.title.toLowerCase());
+                                    const catId = realCat ? realCat.id : null;
+
+                                    return (
+                                        <CategoryShowcaseCard
+                                            key={index}
+                                            title={item.title}
+                                            subtitle={item.subtitle}
+                                            tag={item.tag}
+                                            image={item.image}
+                                            color={item.color}
+                                            bgColor={item.bgColor}
+                                            onPress={() => {
+                                                if (catId) {
+                                                    navigation.navigate('CategoryProducts', {
+                                                        categoryId: catId,
+                                                        categoryName: item.title
+                                                    });
+                                                } else {
+                                                    alert(`Wait for Shopkeeper to add "${item.title}" category.`);
+                                                }
+                                            }}
+                                        />
+                                    );
+                                });
+                            })()}
                         </ScrollView>
                     </View>
 
@@ -228,9 +297,9 @@ export default function HomeScreen({ navigation }) {
                     {dailyUseProducts.length > 0 && (
                         <View>
                             <View style={styles.sectionHeader}>
-                                <Text style={styles.sectionTitle}>Daily Use</Text>
+                                <Text style={styles.sectionTitle}>{t('daily_use')}</Text>
                                 <TouchableOpacity>
-                                    <Text style={styles.seeMore}>See all</Text>
+                                    <Text style={styles.seeMore}>{t('see_all')}</Text>
                                 </TouchableOpacity>
                             </View>
 
@@ -240,9 +309,9 @@ export default function HomeScreen({ navigation }) {
                                     showsHorizontalScrollIndicator={false}
                                     contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
                                 >
-                                    {dailyUseProducts.map((item) => (
+                                    {dailyUseProducts.map((item, index) => (
                                         <DailyItemCard
-                                            key={item.id}
+                                            key={(item.id || item._id || index).toString()}
                                             item={item}
                                             onPress={() => handleProductPress(item)}
                                         />
@@ -256,9 +325,9 @@ export default function HomeScreen({ navigation }) {
                     {snacksProducts.length > 0 && (
                         <View>
                             <View style={styles.sectionHeader}>
-                                <Text style={styles.sectionTitle}>Chai & Nashta</Text>
+                                <Text style={styles.sectionTitle}>{t('chai_nashta')}</Text>
                                 <TouchableOpacity>
-                                    <Text style={styles.seeMore}>See all</Text>
+                                    <Text style={styles.seeMore}>{t('see_all')}</Text>
                                 </TouchableOpacity>
                             </View>
 
@@ -268,9 +337,9 @@ export default function HomeScreen({ navigation }) {
                                     showsHorizontalScrollIndicator={false}
                                     contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
                                 >
-                                    {snacksProducts.map((item) => (
+                                    {snacksProducts.map((item, index) => (
                                         <DailyItemCard
-                                            key={item.id}
+                                            key={(item.id || item._id || index).toString()}
                                             item={item}
                                             onPress={() => handleProductPress(item)}
                                         />
@@ -284,9 +353,9 @@ export default function HomeScreen({ navigation }) {
                     {coursesProducts.length > 0 && (
                         <View>
                             <View style={styles.sectionHeader}>
-                                <Text style={styles.sectionTitle}>Spices & Pulses</Text>
+                                <Text style={styles.sectionTitle}>{t('spices_pulses')}</Text>
                                 <TouchableOpacity>
-                                    <Text style={styles.seeMore}>See all</Text>
+                                    <Text style={styles.seeMore}>{t('see_all')}</Text>
                                 </TouchableOpacity>
                             </View>
 
@@ -296,9 +365,37 @@ export default function HomeScreen({ navigation }) {
                                     showsHorizontalScrollIndicator={false}
                                     contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
                                 >
-                                    {coursesProducts.map((item) => (
+                                    {coursesProducts.map((item, index) => (
                                         <DailyItemCard
-                                            key={item.id}
+                                            key={(item.id || item._id || index).toString()}
+                                            item={item}
+                                            onPress={() => handleProductPress(item)}
+                                        />
+                                    ))}
+                                </ScrollView>
+                            </View>
+                        </View>
+                    )}
+
+                    {/* 'Cleaning & Household' Section (AI-Powered) */}
+                    {cleaningProducts.length > 0 && (
+                        <View>
+                            <View style={styles.sectionHeader}>
+                                <Text style={styles.sectionTitle}>{t('household')}</Text>
+                                <TouchableOpacity>
+                                    <Text style={styles.seeMore}>{t('see_all')}</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <View>
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
+                                >
+                                    {cleaningProducts.map((item, index) => (
+                                        <DailyItemCard
+                                            key={(item.id || item._id || index).toString()}
                                             item={item}
                                             onPress={() => handleProductPress(item)}
                                         />

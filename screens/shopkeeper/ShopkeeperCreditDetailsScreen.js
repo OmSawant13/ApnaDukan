@@ -13,12 +13,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-
 import { useCredit } from '../../context/CreditContext';
+import { useShopLanguage } from '../../context/LanguageContext';
 
 export default function ShopkeeperCreditDetailsScreen({ navigation, route }) {
     const { userId } = route.params || {};
     const { customers, addTransaction } = useCredit();
+    const { t } = useShopLanguage();
 
     const customer = customers.find(c => c._id === userId);
 
@@ -30,7 +31,7 @@ export default function ShopkeeperCreditDetailsScreen({ navigation, route }) {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
                         <Ionicons name="arrow-back" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Customer Not Found</Text>
+                    <Text style={styles.headerTitle}>{t('error') || 'Customer Not Found'}</Text>
                 </View>
             </SafeAreaView>
         );
@@ -75,34 +76,49 @@ export default function ShopkeeperCreditDetailsScreen({ navigation, route }) {
         setShowPay(false);
     };
 
-    const renderItem = ({ item }) => (
-        <View style={styles.txnRow}>
-            <View style={styles.dateBox}>
-                <Text style={styles.date}>{formatDate(item.date).split(' ')[0]}</Text>
-                <Text style={styles.month}>{formatDate(item.date).split(' ')[1]}</Text>
-            </View>
+    const renderItem = ({ item }) => {
+        const isOrder = !!item.orderId;
 
-            <View style={{ flex: 1 }}>
-                <View style={styles.txnHeader}>
-                    <Text style={styles.desc}>{item.note || item.text}</Text>
-                    {!item.orderId && (
-                        <View style={styles.manualTag}>
-                            <Text style={styles.manualText}>MANUAL</Text>
-                        </View>
-                    )}
+        return (
+            <TouchableOpacity 
+                style={styles.txnRow}
+                onPress={() => isOrder && navigation.navigate('ShopkeeperOrderDetails', { orderId: item.orderId })}
+                disabled={!isOrder}
+                activeOpacity={0.7}
+            >
+                <View style={styles.dateBox}>
+                    <Text style={styles.date}>{formatDate(item.date).split(' ')[0]}</Text>
+                    <Text style={styles.month}>{formatDate(item.date).split(' ')[1]}</Text>
                 </View>
 
-                <Text
-                    style={[
-                        styles.amount,
-                        { color: item.type === 'credit' ? '#EF4444' : '#10B981' },
-                    ]}
-                >
-                    {item.type === 'credit' ? '+' : '-'} ₹{item.amount}
-                </Text>
-            </View>
-        </View>
-    );
+                <View style={{ flex: 1 }}>
+                    <View style={styles.txnHeader}>
+                        <Text style={styles.desc}>{item.note || item.text}</Text>
+                        {isOrder ? (
+                            <Ionicons name="receipt-outline" size={14} color="#6B7280" style={{ marginLeft: 4 }} />
+                        ) : (
+                            <View style={styles.manualTag}>
+                                <Text style={styles.manualText}>{t('onboard_title_1') === 'Welcome' ? 'MANUAL' : 'मॅन्युअल'}</Text>
+                            </View>
+                        )}
+                    </View>
+
+                    <Text
+                        style={[
+                            styles.amount,
+                            { color: item.type === 'credit' ? '#EF4444' : '#10B981' },
+                        ]}
+                    >
+                        {item.type === 'credit' ? '+' : '-'} ₹{item.amount}
+                    </Text>
+                </View>
+                
+                {isOrder && (
+                    <Ionicons name="chevron-forward" size={18} color="#D1D5DB" style={{ alignSelf: 'center' }} />
+                )}
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -125,17 +141,17 @@ export default function ShopkeeperCreditDetailsScreen({ navigation, route }) {
             {/* Balance Card - Premium Dark */}
             <View style={styles.balanceCard}>
                 <View>
-                    <Text style={styles.balanceLabel}>Total Due</Text>
+                    <Text style={styles.balanceLabel}>{t('total_due')}</Text>
                     <Text style={styles.balanceValue}>₹{balance}</Text>
                 </View>
                 <TouchableOpacity style={styles.remindBtn}>
-                    <Text style={styles.remindText}>Remind</Text>
+                    <Text style={styles.remindText}>{t('onboard_title_1') === 'Welcome' ? 'Remind' : 'आठवण करा'}</Text>
                 </TouchableOpacity>
             </View>
 
             {/* History List */}
             <View style={styles.listContainer}>
-                <Text style={styles.sectionTitle}>Transaction History</Text>
+                <Text style={styles.sectionTitle}>{t('orders') === 'Orders' ? 'Transaction History' : 'व्यवहार इतिहास'}</Text>
                 <FlatList
                     data={history}
                     keyExtractor={item => item._id || item.id}
@@ -143,7 +159,7 @@ export default function ShopkeeperCreditDetailsScreen({ navigation, route }) {
                     contentContainerStyle={{ paddingBottom: 100 }}
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
-                        <Text style={styles.emptyText}>No transactions yet</Text>
+                        <Text style={styles.emptyText}>{t('onboard_title_1') === 'Welcome' ? 'No transactions yet' : 'अद्याप कोणतेही व्यवहार नाहीत'}</Text>
                     }
                 />
             </View>
@@ -155,7 +171,7 @@ export default function ShopkeeperCreditDetailsScreen({ navigation, route }) {
                     onPress={() => setShowAdd(true)}
                 >
                     <Ionicons name="add-circle-outline" size={20} color="#EF4444" />
-                    <Text style={[styles.actionText, { color: '#EF4444' }]}>Give Credit</Text>
+                    <Text style={[styles.actionText, { color: '#EF4444' }]}>{t('add_to_credit')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -163,7 +179,7 @@ export default function ShopkeeperCreditDetailsScreen({ navigation, route }) {
                     onPress={() => setShowPay(true)}
                 >
                     <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
-                    <Text style={[styles.actionText, { color: '#fff' }]}>Receive Pay</Text>
+                    <Text style={[styles.actionText, { color: '#fff' }]}>{t('onboard_title_1') === 'Welcome' ? 'Receive Pay' : 'पैसे मिळाले'}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -175,13 +191,13 @@ export default function ShopkeeperCreditDetailsScreen({ navigation, route }) {
                 >
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Add New Credit</Text>
+                            <Text style={styles.modalTitle}>{t('add_to_credit')}</Text>
                             <TouchableOpacity onPress={resetForms}>
                                 <Ionicons name="close" size={24} color="#6B7280" />
                             </TouchableOpacity>
                         </View>
 
-                        <Text style={styles.label}>Items / Description</Text>
+                        <Text style={styles.label}>{t('onboard_title_1') === 'Welcome' ? 'Items / Description' : 'वस्तू / वर्णन'}</Text>
                         <TextInput
                             placeholder="e.g. Rice, Oil, Sugar"
                             value={desc}
@@ -190,7 +206,7 @@ export default function ShopkeeperCreditDetailsScreen({ navigation, route }) {
                             autoFocus
                         />
 
-                        <Text style={styles.label}>Amount (₹)</Text>
+                        <Text style={styles.label}>{t('onboard_title_1') === 'Welcome' ? 'Amount' : 'रक्कम'} (₹)</Text>
                         <TextInput
                             placeholder="0"
                             keyboardType="number-pad"
@@ -200,7 +216,7 @@ export default function ShopkeeperCreditDetailsScreen({ navigation, route }) {
                         />
 
                         <TouchableOpacity style={styles.saveBtn} onPress={handleAddCredit}>
-                            <Text style={styles.saveText}>Add to Credit</Text>
+                            <Text style={styles.saveText}>{t('add_to_credit')}</Text>
                         </TouchableOpacity>
                     </View>
                 </KeyboardAvoidingView>
@@ -214,13 +230,13 @@ export default function ShopkeeperCreditDetailsScreen({ navigation, route }) {
                 >
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Receive Payment</Text>
+                            <Text style={styles.modalTitle}>{t('onboard_title_1') === 'Welcome' ? 'Receive Payment' : 'पेमेंट मिळवा'}</Text>
                             <TouchableOpacity onPress={resetForms}>
                                 <Ionicons name="close" size={24} color="#6B7280" />
                             </TouchableOpacity>
                         </View>
 
-                        <Text style={styles.label}>Amount Received (₹)</Text>
+                        <Text style={styles.label}>{t('onboard_title_1') === 'Welcome' ? 'Amount Received' : 'प्राप्त झालेली रक्कम'} (₹)</Text>
                         <TextInput
                             placeholder="0"
                             keyboardType="number-pad"
@@ -231,7 +247,7 @@ export default function ShopkeeperCreditDetailsScreen({ navigation, route }) {
                         />
 
                         <TouchableOpacity style={[styles.saveBtn, { backgroundColor: '#10B981' }]} onPress={handleReceivePayment}>
-                            <Text style={styles.saveText}>Confirm Payment</Text>
+                            <Text style={styles.saveText}>{t('confirm') || 'Confirm'}</Text>
                         </TouchableOpacity>
                     </View>
                 </KeyboardAvoidingView>

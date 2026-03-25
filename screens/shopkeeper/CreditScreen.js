@@ -14,9 +14,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useCredit } from '../../context/CreditContext';
+import { useShopLanguage } from '../../context/LanguageContext';
 
 export default function ShopkeeperCreditScreen({ navigation }) {
     const { customers, addCustomer, addTransaction } = useCredit();
+    const { t } = useShopLanguage();
     const [isModalVisible, setModalVisible] = useState(false);
     const [newName, setNewName] = useState('');
     const [newPhone, setNewPhone] = useState('');
@@ -28,13 +30,6 @@ export default function ShopkeeperCreditScreen({ navigation }) {
 
         await addCustomer(newName.trim(), newPhone.trim());
 
-        // If initial amount is added, we need to add a transaction too?
-        // For simplicity, addCustomer just creates user. 
-        // We can add transaction logic here if needed, but Context separates it.
-        // Let's assume Add Customer is just profile for now.
-        // Or better: context's addCustomer could handle initial balance if backend supported it.
-        // Let's stick to simple create.
-
         setNewName('');
         setNewPhone('');
         setNewDesc('');
@@ -44,8 +39,6 @@ export default function ShopkeeperCreditScreen({ navigation }) {
 
     // Calculate Totals
     const totalDue = customers.reduce((sum, c) => sum + (c.balance > 0 ? c.balance : 0), 0);
-    // Rough estimate of collected? Backend doesn't track "Total Collected" explicitly without aggregation.
-    // For now, let's just show Total Due.
 
     // Last Date Logic
     const getLastDate = (customer) => {
@@ -67,7 +60,7 @@ export default function ShopkeeperCreditScreen({ navigation }) {
                 <Text style={styles.lastDate}>Last: {getLastDate(item)}</Text>
             </View>
             <View style={styles.dueInfo}>
-                <Text style={styles.dueLabel}>Due</Text>
+                <Text style={styles.dueLabel}>{t('due')}</Text>
                 <Text style={styles.dueAmount}>₹{item.balance}</Text>
             </View>
         </TouchableOpacity>
@@ -78,7 +71,7 @@ export default function ShopkeeperCreditScreen({ navigation }) {
             <StatusBar barStyle="dark-content" />
 
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Credit / Khata</Text>
+                <Text style={styles.headerTitle}>{t('credit_khata')}</Text>
                 <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
                     <Ionicons name="person-add" size={24} color="#111827" />
                 </TouchableOpacity>
@@ -86,21 +79,14 @@ export default function ShopkeeperCreditScreen({ navigation }) {
 
             <View style={styles.summaryCard}>
                 <View style={styles.summaryItem}>
-                    <Text style={styles.summaryLabel}>Total Due</Text>
+                    <Text style={styles.summaryLabel}>{t('total_due')}</Text>
                     <Text style={styles.summaryValue}>₹{totalDue}</Text>
                 </View>
-                {/* 
-                <View style={styles.summaryDivider} />
-                <View style={styles.summaryItem}>
-                    <Text style={styles.summaryLabel}>Collected</Text>
-                    <Text style={styles.summaryValue}>-</Text>
-                </View> 
-                */}
             </View>
 
             <FlatList
-                data={customers}
-                keyExtractor={item => item._id}
+                data={customers.filter(c => c.balance > 0 || c.isCreditUser)}
+                keyExtractor={(item, index) => (item._id || item.id || index).toString()}
                 renderItem={renderUser}
                 contentContainerStyle={styles.list}
                 showsVerticalScrollIndicator={false}
@@ -117,13 +103,13 @@ export default function ShopkeeperCreditScreen({ navigation }) {
                 >
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Add New Customer</Text>
+                            <Text style={styles.modalTitle}>{t('add_customer')}</Text>
                             <TouchableOpacity onPress={() => setModalVisible(false)}>
                                 <Ionicons name="close" size={24} color="#6B7280" />
                             </TouchableOpacity>
                         </View>
 
-                        <Text style={styles.label}>Customer Name</Text>
+                        <Text style={styles.label}>{t('customer_name')}</Text>
                         <TextInput
                             placeholder="e.g. Rahul Kumar"
                             value={newName}
@@ -149,7 +135,7 @@ export default function ShopkeeperCreditScreen({ navigation }) {
                             style={styles.input}
                         />
 
-                        <Text style={styles.label}>Initial Amount (₹)</Text>
+                        <Text style={styles.label}>{t('initial_amount')}</Text>
                         <TextInput
                             placeholder="0"
                             value={newAmount}
@@ -159,7 +145,7 @@ export default function ShopkeeperCreditScreen({ navigation }) {
                         />
 
                         <TouchableOpacity style={styles.saveBtn} onPress={handleAddUser}>
-                            <Text style={styles.saveText}>Add Customer</Text>
+                            <Text style={styles.saveText}>{t('add_customer')}</Text>
                         </TouchableOpacity>
                     </View>
                 </KeyboardAvoidingView>

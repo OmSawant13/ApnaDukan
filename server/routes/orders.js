@@ -1,13 +1,19 @@
-const router = require('express').Router();
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const Customer = require('../models/Customer');
+const CreditAccount = require('../models/CreditAccount');
+const router = require('express').Router();
 
 // GET ALL ORDERS (Optional filters: ?status=open)
 router.get('/', async (req, res) => {
     try {
-        const { status } = req.query;
+        const { status, customerId } = req.query;
+        const shopId = req.headers['x-shop-id'];
+
         let query = {};
         if (status) query.status = status;
+        if (shopId) query.shopId = shopId;
+        if (customerId) query.customerId = customerId;
 
         const orders = await Order.find(query).sort({ createdAt: -1 });
         res.json(orders);
@@ -30,18 +36,20 @@ router.get('/:id', async (req, res) => {
 // CREATE NEW ORDER
 router.post('/', async (req, res) => {
     try {
-        const { customer, items, totalAmount, paymentMethod, isCredit } = req.body;
+        const { customer, customerId, items, totalAmount, paymentMethod, isCredit, shopId } = req.body;
 
         const newOrder = new Order({
             customer: customer || 'Guest Customer',
+            customerId: customerId || null,
             items,
             totalAmount,
             paymentMethod,
             isCredit,
+            shopId,
             status: 'open'
         });
 
-        const savedOrder = await newOrder.save();
+        // const savedOrder = await newOrder.save(); // Moved below stock check
 
         // Optional: Update Stock Here (If strict consistency needed)
         // But usually frontend handles decrement or separate endpoint.
@@ -50,12 +58,85 @@ router.post('/', async (req, res) => {
         // User asked for "Stock levels are updated once an order is placed".
         // So let's decrement stock here.
 
+        // 1. Strict Stock Check
         for (const item of items) {
-            await Product.findByIdAndUpdate(item.productId, {
-                $inc: { stockCount: -item.quantity },
-                // Check if stock becomes 0, set stock: false?
-                // Let's keep it simple: just decrement. Frontend can re-fetch.
-            });
+            const product = await Product.findById(item.productId);
+            if (!product) {
+                return res.status(404).json({ error: `Product ${item.name} not found` });
+            }
+            if (product.stockCount < item.quantity) {
+                return res.status(400).json({
+                    error: `Insufficient stock for ${item.name}. Available: ${product.stockCount}, Requested: ${item.quantity}`
+                });
+            }
+        }
+
+        const savedOrder = await newOrder.save();
+
+        // 2. Decrement Stock & Update Status
+        for (const item of items) {
+            const product = await Product.findById(item.productId);
+            if (product) {
+                product.stockCount -= item.quantity;
+                if (product.stockCount <= 0) {
+                    product.stockCount = 0;
+                    product.stock = false;
+                }
+                const updatedProduct = await product.save();
+
+                if (req.io) {
+                    req.io.emit('product_updated', {
+                        action: 'update',
+                        product: updatedProduct
+                    });
+                }
+            }
+        }
+
+        // 3. AUTO-UPDATE CREDIT LEDGER (If isCredit is true)
+        if (isCredit && customerId && shopId) {
+            try {
+                // Find or create the shop-specific credit account for this customer
+                let account = await CreditAccount.findOne({ customerId, shopId });
+                if (!account) {
+                    account = new CreditAccount({ customerId, shopId });
+                }
+
+                const transaction = {
+                    type: 'credit',
+                    amount: totalAmount,
+                    orderId: savedOrder._id,
+                    note: `Order #${savedOrder._id.toString().slice(-4)}`
+                };
+
+                account.transactions.push(transaction);
+                account.balance += totalAmount;
+                await account.save();
+
+                // 4. Update Customer Global Balance (Mirror)
+                const customer = await Customer.findById(customerId);
+                if (customer) {
+                    customer.balance += totalAmount;
+                    customer.isCreditUser = true;
+                    // Also mirror to global history for customer's global profile
+                    customer.transactions.push(transaction);
+                    await customer.save();
+                }
+
+                // Formal confirmation in order document
+                savedOrder.isCredit = true;
+                await savedOrder.save();
+                console.log('✅ CreditAccount & Customer auto-updated for shop:', shopId);
+            } catch (err) {
+                console.error('❌ Failed to auto-update credit ledger:', err);
+            }
+        }
+
+
+
+        // ⚡ Emit New Order Event
+        if (req.io) {
+            req.io.emit('new_order', savedOrder);
         }
 
         res.status(201).json(savedOrder);
@@ -74,6 +155,12 @@ router.put('/:id/status', async (req, res) => {
             { new: true }
         );
         if (!updatedOrder) return res.status(404).json({ error: 'Order not found' });
+
+        // ⚡ Emit Socket Update
+        if (req.io) {
+            req.io.emit('order_updated', updatedOrder);
+        }
+
         res.json(updatedOrder);
     } catch (err) {
         res.status(400).json({ error: err.message });

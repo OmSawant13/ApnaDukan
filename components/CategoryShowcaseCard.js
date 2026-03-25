@@ -1,10 +1,12 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '../context/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
 export default function CategoryShowcaseCard({ title, subtitle, tag, icon, image, color, bgColor, onPress, style }) {
+    const { translateProduct } = useLanguage();
     return (
         <TouchableOpacity
             style={[styles.cardContainer, { backgroundColor: bgColor }, style]}
@@ -12,8 +14,8 @@ export default function CategoryShowcaseCard({ title, subtitle, tag, icon, image
             activeOpacity={0.8}
         >
             <View style={styles.contentContainer}>
-                <Text style={styles.title}>{title}</Text>
-                {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+                <Text style={styles.title}>{translateProduct(title)}</Text>
+                {subtitle && <Text style={styles.subtitle}>{translateProduct(subtitle)}</Text>}
                 {tag && <Text style={styles.tag}>{tag}</Text>}
             </View>
 

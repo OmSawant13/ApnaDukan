@@ -21,6 +21,8 @@ const orderSchema = new mongoose.Schema({
         price: { type: Number, required: true }, // Keep snapshot of price
         unit: { type: String, required: true },
         quantity: { type: Number, required: true },
+        weight: { type: Number }, // To store grams/kg selected
+        weightUnit: { type: String }, // 'g' or 'kg'
         image: { type: String } // 'Panipuri.jpeg' etc
     }],
     totalAmount: {
@@ -40,6 +42,11 @@ const orderSchema = new mongoose.Schema({
     isCredit: {
         type: Boolean,
         default: false
+    },
+    shopId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Shop',
+        required: true
     }
 }, { timestamps: true });
 

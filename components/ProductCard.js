@@ -7,9 +7,11 @@ const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.35;
 
 import { useOrders } from '../context/OrderContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function ProductCard({ item, onPress, style, imageHeight = 100 }) {
     const { cart, addToCart, removeFromCart, updateQuantity } = useOrders();
+    const { t, translateProduct } = useLanguage();
 
     // Find if item is in cart
     const cartItem = cart.find(c => c.id === item.id);
@@ -19,12 +21,29 @@ export default function ProductCard({ item, onPress, style, imageHeight = 100 })
         if (item.type === 'weight') {
             onPress(); // Navigate to details for weight
         } else {
+            // Check Stock for initial add
+            if (item.stock && item.stockCount <= 0) {
+                alert('Out of Stock');
+                return;
+            }
+            // Check if 1 > stock (rare but possible if stock is 0)
+            if (item.stock && 1 > item.stockCount) { // Should be covered above but safe check
+                alert(`Only ${item.stockCount} items available.`);
+                return;
+            }
             addToCart(item);
         }
     };
 
     // Direct increment/decrement for card
-    const handleIncrement = () => addToCart(item); // Add checks if exists and increments
+    const handleIncrement = () => {
+        // Check Stock Limit
+        if (item.stock && quantity >= item.stockCount) {
+            alert(`Stock Limit Reached!\nOnly ${item.stockCount} items available.`);
+            return;
+        }
+        addToCart(item);
+    };
     const handleDecrement = () => updateQuantity(item.id, -1);
 
     return (
@@ -32,13 +51,15 @@ export default function ProductCard({ item, onPress, style, imageHeight = 100 })
             {/* Image Placeholder */}
             <View style={[styles.imageContainer, { height: imageHeight }]}>
                 {/* Replace with actual Image component later */}
-                <Image source={item.image} style={styles.image} resizeMode="contain" />
+                <Image source={item.image} style={styles.image} resizeMode="cover" />
             </View>
 
             {/* Details */}
             <View style={styles.detailsContainer}>
-                <Text style={styles.title} numberOfLines={2}>{item.name}</Text>
-                <Text style={styles.weight}>{item.subtitle || item.weight || item.unit}</Text>
+                <Text style={styles.title} numberOfLines={2}>{translateProduct(item.name)}</Text>
+                <Text style={styles.weight}>
+                    {translateProduct(item.subtitle) || translateProduct(item.weight) || t(item.unit)}
+                </Text>
 
                 <View style={styles.priceRow}>
                     <Text style={styles.price}>₹{item.price}</Text>
@@ -50,7 +71,7 @@ export default function ProductCard({ item, onPress, style, imageHeight = 100 })
             <View style={styles.actionContainer}>
                 {quantity === 0 ? (
                     <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
-                        <Text style={styles.addText}>ADD</Text>
+                        <Text style={styles.addText}>{t('add')}</Text>
                         <Ionicons name="add" size={16} color="#042e23" />
                     </TouchableOpacity>
                 ) : (
@@ -96,6 +117,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 8,
+        overflow: 'hidden',
     },
     image: {
         width: '100%',

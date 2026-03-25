@@ -10,6 +10,10 @@ const categorySchema = new mongoose.Schema({
         type: String, // Ionicon name
         default: 'grid',
     },
+    image: {
+        type: String, // URL of uploaded image
+        default: null
+    },
     type: {
         type: String,
         enum: ['unit', 'weight'], // Essential for dynamic header logic
@@ -18,6 +22,11 @@ const categorySchema = new mongoose.Schema({
     active: {
         type: Boolean,
         default: true
+    },
+    shopId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Shop',
+        required: true
     }
 }, { timestamps: true });
 

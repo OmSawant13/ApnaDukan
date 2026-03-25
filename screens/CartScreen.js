@@ -12,6 +12,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useOrders } from '../context/OrderContext';
+import { useLanguage } from '../context/LanguageContext';
 
 /* -------------------- DUMMY DATA -------------------- */
 
@@ -45,30 +46,37 @@ const DUMMY_CART_ITEMS = [
 /* -------------------- CART ITEM -------------------- */
 
 const CartItem = ({ item, onIncrement, onDecrement, onRemove }) => {
+    const { translateProduct } = useLanguage();
     return (
         <View style={styles.cartCard}>
             <Image source={item.image} style={styles.itemImage} />
 
             <View style={styles.itemInfo}>
-                <Text style={styles.itemName}>{item.name}</Text>
-                <Text style={styles.itemWeight}>{item.subtitle || item.weight}</Text>
+                <Text style={styles.itemName}>{translateProduct(item.name)}</Text>
+                <Text style={styles.itemWeight}>
+                    {item.type === 'weight' ? `${item.customWeight} g` : (translateProduct(item.subtitle) || translateProduct(item.weight))}
+                </Text>
                 <Text style={styles.itemPrice}>
                     ₹{item.price * item.quantity}
                 </Text>
             </View>
 
             <View style={styles.controls}>
-                <View style={styles.quantityControl}>
-                    <TouchableOpacity onPress={onDecrement} style={styles.qtyBtn}>
-                        <Ionicons name="remove" size={16} color="#10b981" />
-                    </TouchableOpacity>
+                {item.type !== 'weight' ? (
+                    <View style={styles.quantityControl}>
+                        <TouchableOpacity onPress={onDecrement} style={styles.qtyBtn}>
+                            <Ionicons name="remove" size={16} color="#10b981" />
+                        </TouchableOpacity>
 
-                    <Text style={styles.qtyText}>{item.quantity}</Text>
+                        <Text style={styles.qtyText}>{item.quantity}</Text>
 
-                    <TouchableOpacity onPress={onIncrement} style={styles.qtyBtn}>
-                        <Ionicons name="add" size={16} color="#10b981" />
-                    </TouchableOpacity>
-                </View>
+                        <TouchableOpacity onPress={onIncrement} style={styles.qtyBtn}>
+                            <Ionicons name="add" size={16} color="#10b981" />
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <View style={{ height: 36 }} /> // Spacer to keep layout consistent
+                )}
 
                 <TouchableOpacity onPress={onRemove} style={styles.removeBtn}>
                     <Ionicons name="trash-outline" size={18} color="#9ca3af" />
@@ -82,23 +90,22 @@ const CartItem = ({ item, onIncrement, onDecrement, onRemove }) => {
 
 export default function CartScreen({ navigation }) {
     const { cart, updateQuantity, removeFromCart, getCartTotal, placeOrder, clearCart } = useOrders();
+    const { t } = useLanguage();
     const insets = useSafeAreaInsets();
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
+    const [isCredit, setIsCredit] = useState(false);
+
     const handlePlaceOrder = async () => {
         setIsPlacingOrder(true);
-        // Hardcoded Customer Name for now
-        await placeOrder('Raju Bhai');
+        // Customer Name & ID now handled automatically by the context from Auth
+        await placeOrder(isCredit);
         setIsPlacingOrder(false);
-        // Navigation handled by Alert in Context or we can Nav here?
-        // Context shows Alert. Let's redirect to Home after success?
-        // But clearCart makes items [] so it will show empty screen.
-        // Let's align with that.
     };
 
     const subtotal = getCartTotal();
-    const deliveryFee = subtotal > 0 ? 20 : 0;
-    const total = subtotal + deliveryFee;
+    // Delivery Fee Removed as per user request
+    const total = subtotal;
 
     /* ---------------- EMPTY CART ---------------- */
 
@@ -114,19 +121,19 @@ export default function CartScreen({ navigation }) {
                     >
                         <Ionicons name="chevron-back" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>My Cart</Text>
+                    <Text style={styles.headerTitle}>{t('my_cart')}</Text>
                     <View style={{ width: 40 }} />
                 </View>
 
                 <View style={styles.emptyContainer}>
                     <Ionicons name="cart-outline" size={90} color="#e5e7eb" />
-                    <Text style={styles.emptyText}>Your cart is empty</Text>
+                    <Text style={styles.emptyText}>{t('cart_empty')}</Text>
 
                     <TouchableOpacity
                         onPress={() => navigation.goBack()}
                         style={styles.shopNowBtn}
                     >
-                        <Text style={styles.shopNowText}>Start Shopping</Text>
+                        <Text style={styles.shopNowText}>{t('start_shopping')}</Text>
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>
@@ -148,10 +155,10 @@ export default function CartScreen({ navigation }) {
                     <Ionicons name="chevron-back" size={24} color="#111827" />
                 </TouchableOpacity>
 
-                <Text style={styles.headerTitle}>My Cart</Text>
+                <Text style={styles.headerTitle}>{t('my_cart')}</Text>
 
                 <TouchableOpacity onPress={clearCart}>
-                    <Text style={styles.clearText}>Clear</Text>
+                    <Text style={styles.clearText}>{t('clear')}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -174,21 +181,30 @@ export default function CartScreen({ navigation }) {
             {/* FOOTER / BILL */}
             <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
                 <View style={styles.billRow}>
-                    <Text style={styles.billLabel}>Subtotal</Text>
+                    <Text style={styles.billLabel}>{t('subtotal')}</Text>
                     <Text style={styles.billValue}>₹{subtotal}</Text>
                 </View>
 
-                <View style={styles.billRow}>
-                    <Text style={styles.billLabel}>Delivery Fee</Text>
-                    <Text style={styles.billValue}>₹{deliveryFee}</Text>
-                </View>
+                {/* Delivery Fee Removed */}
 
                 <View style={styles.divider} />
 
                 <View style={styles.totalRow}>
-                    <Text style={styles.totalLabel}>Total</Text>
+                    <Text style={styles.totalLabel}>{t('total')}</Text>
                     <Text style={styles.totalValue}>₹{total}</Text>
                 </View>
+
+                {/* --- Pay on Credit Toggle --- */}
+                <TouchableOpacity 
+                    style={styles.creditToggle} 
+                    onPress={() => setIsCredit(!isCredit)}
+                    activeOpacity={0.7}
+                >
+                    <View style={[styles.toggleCircle, isCredit && styles.toggleActive]}>
+                        {isCredit && <Ionicons name="checkmark" size={14} color="#fff" />}
+                    </View>
+                    <Text style={styles.creditText}>Pay Later (Add to Udhari/Credit)</Text>
+                </TouchableOpacity>
 
                 <TouchableOpacity
                     style={[styles.checkoutBtn, isPlacingOrder && { opacity: 0.7 }]}
@@ -202,7 +218,7 @@ export default function CartScreen({ navigation }) {
                         end={{ x: 1, y: 1 }}
                     >
                         <Text style={styles.checkoutText}>
-                            {isPlacingOrder ? 'Placing Order...' : 'Proceed to Buy'}
+                            {isPlacingOrder ? t('placing_order') : t('proceed_to_buy')}
                         </Text>
                         {!isPlacingOrder && <Ionicons name="arrow-forward" size={20} color="#fff" />}
                     </LinearGradient>
@@ -359,7 +375,35 @@ const styles = StyleSheet.create({
         fontWeight: '900',
         color: '#10b981',
     },
-
+    creditToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f8fafc',
+        padding: 12,
+        borderRadius: 12,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
+    toggleCircle: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        borderWidth: 2,
+        borderColor: '#94a3b8',
+        marginRight: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    toggleActive: {
+        backgroundColor: '#10b981',
+        borderColor: '#10b981',
+    },
+    creditText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#475569',
+    },
     checkoutBtn: {
         height: 56,
         borderRadius: 28,

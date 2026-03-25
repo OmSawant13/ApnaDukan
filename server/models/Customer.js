@@ -34,6 +34,15 @@ const customerSchema = new mongoose.Schema({
         type: Number,
         default: 0 // Positive means customer owes shopkeeper
     },
+    isCreditUser: {
+        type: Boolean,
+        default: false
+    },
+    role: {
+        type: String,
+        enum: ['customer', 'shopkeeper'],
+        default: 'customer'
+    },
     transactions: [transactionSchema]
 }, { timestamps: true });
 

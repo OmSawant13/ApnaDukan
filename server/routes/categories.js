@@ -5,7 +5,11 @@ const Product = require('../models/Product');
 // GET all categories
 router.get('/', async (req, res) => {
     try {
-        const categories = await Category.find({ active: true });
+        const shopId = req.headers['x-shop-id'];
+        let query = { active: true };
+        if (shopId) query.shopId = shopId;
+
+        const categories = await Category.find(query);
         res.json(categories);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -15,8 +19,8 @@ router.get('/', async (req, res) => {
 // POST create category
 router.post('/', async (req, res) => {
     try {
-        const { name, type, icon } = req.body;
-        const newCategory = new Category({ name, type, icon });
+        const { name, type, icon, image, shopId } = req.body;
+        const newCategory = new Category({ name, type, icon, image, shopId });
         const savedCategory = await newCategory.save();
         res.status(201).json(savedCategory);
     } catch (err) {

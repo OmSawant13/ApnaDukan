@@ -1,326 +1,389 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    StatusBar,
-    Image,
-    TouchableOpacity,
-    ScrollView,
-    Platform,
-    Alert
+    View, Text, StyleSheet, StatusBar,
+    TouchableOpacity, ScrollView, Alert, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
+import { useOrders } from '../context/OrderContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function ProfileScreen({ navigation }) {
     const { user, logout } = useAuth();
+    const { orders, fetchOrders } = useOrders();
+    const { t, customerLanguage, changeLanguage } = useLanguage();
+
+    // Fetch orders on mount so stats are fresh
+    useEffect(() => {
+        fetchOrders();
+    }, []);
 
     const handleLogout = () => {
-        Alert.alert(
-            'Logout',
-            'Are you sure you want to log out?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Logout', style: 'destructive', onPress: logout }
-            ]
-        );
+        Alert.alert(t('logout'), 'Are you sure you want to log out?', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: t('logout'), style: 'destructive', onPress: logout },
+        ]);
     };
 
-    const USER_STATS = {
-        totalOrders: 12,
-        totalSpent: 4580
-    };
+    // Filter orders by customer name (customerId not always stored in older orders)
+    const myOrders = orders.filter(o =>
+        (o.customerId && o.customerId === user?._id) ||
+        (o.customer && user?.name && o.customer.toLowerCase() === user.name.toLowerCase())
+    );
+    const totalOrders = myOrders.length;
+    const totalSpent = myOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
 
     const INFO_ITEMS = [
-        { icon: 'person-outline', label: 'Edit Profile' },
-        { icon: 'notifications-outline', label: 'Notifications' },
-        { icon: 'help-circle-outline', label: 'Help & Support' },
+        { icon: 'book-outline', label: 'My Credit Ledger (Khata)', color: '#db2777', bg: '#fce7f3', screen: 'GlobalProfile' },
+        { icon: 'person-outline', label: t('personal_info'), color: '#6366f1', bg: '#eef2ff' },
+        { icon: 'notifications-outline', label: 'Notifications', color: '#f59e0b', bg: '#fffbeb' },
+        { icon: 'help-circle-outline', label: t('help_support'), color: '#0ea5e9', bg: '#e0f2fe' },
     ];
 
+
+    const LANGUAGES = [
+        { id: 'en', label: 'English', sub: 'Default' },
+        { id: 'hi', label: 'हिन्दी', sub: 'Hindi' },
+        { id: 'mr', label: 'मराठी', sub: 'Marathi' },
+        { id: 'hg', label: 'Hinglish', sub: 'Hindi + English' },
+    ];
+
+    const initials = user?.name
+        ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+        : 'GU';
+
     return (
-        <View style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor="#111827" />
+        <View style={styles.root}>
+            <StatusBar barStyle="light-content" backgroundColor="#042e23" />
 
-            {/* HEADER */}
-            <View style={styles.headerContainer}>
-                <LinearGradient
-                    colors={['#1f2937', '#111827']}
-                    style={styles.headerGradient}
-                >
-                    <Text style={styles.headerTitle}>My Profile</Text>
+            {/* ── TOP PROFILE HEADER ── */}
+            <View style={styles.topHeader}>
+                <SafeAreaView edges={['top']}>
+                    <View style={styles.headerContent}>
+                        <Text style={styles.screenTitle}>{t('profile')}</Text>
 
-                    <View style={styles.profileSection}>
-                        <View style={styles.avatarContainer}>
-                            <Image
-                                source={require('../assets/images/baby_care_v3.png')}
-                                style={styles.avatar}
-                            />
-                            <View style={styles.editIconBtn}>
-                                <Ionicons name="camera" size={14} color="#fff" />
+                        <View style={styles.profileRow}>
+                            {/* Avatar */}
+                            <View style={styles.avatarWrap}>
+                                <View style={styles.avatar}>
+                                    <Text style={styles.avatarText}>{initials}</Text>
+                                </View>
+                                <TouchableOpacity style={styles.cameraTag}>
+                                    <Ionicons name="camera" size={11} color="#fff" />
+                                </TouchableOpacity>
                             </View>
-                        </View>
 
-                        <Text style={styles.userName}>{user?.name || 'Guest User'}</Text>
-                        <Text style={styles.userEmail}>{user?.email || 'No Email Linked'}</Text>
-                        <Text style={styles.userPhone}>{user?.phone || '+91 -'}</Text>
+                            {/* Info */}
+                            <View style={styles.profileInfo}>
+                                <Text style={styles.profileName}>{user?.name || 'Guest User'}</Text>
+                                <Text style={styles.profilePhone}>
+                                    {user?.phone ? `+91 ${user.phone}` : 'No phone linked'}
+                                </Text>
+                                <Text style={styles.profileEmail} numberOfLines={1}>
+                                    {user?.email || 'No email linked'}
+                                </Text>
+                            </View>
+
+                            {/* Edit icon */}
+                            <TouchableOpacity style={styles.editCircle}>
+                                <Ionicons name="pencil" size={16} color="#042e23" />
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                </LinearGradient>
+                </SafeAreaView>
             </View>
 
             <ScrollView
+                style={styles.scroll}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
 
-                {/* STATS */}
-                <View style={styles.statsContainer}>
-                    <View style={styles.statBlock}>
-                        <View style={[styles.statIcon, { backgroundColor: '#e0f2fe' }]}>
-                            <Ionicons name="receipt-outline" size={22} color="#0ea5e9" />
-                        </View>
-                        <Text style={styles.statValue}>{USER_STATS.totalOrders}</Text>
-                        <Text style={styles.statLabel}>Orders</Text>
+                {/* ── STAT STRIP ── */}
+                <View style={styles.statStrip}>
+                    <View style={styles.statItem}>
+                        <Text style={styles.statNum}>{totalOrders}</Text>
+                        <Text style={styles.statLbl}>{t('orders')}</Text>
+                    </View>
+                    <View style={styles.statSep} />
+                    <View style={styles.statItem}>
+                        <Text style={styles.statNum}>₹{totalSpent}</Text>
+                        <Text style={styles.statLbl}>{t('total')}</Text>
+                    </View>
+                    <View style={styles.statSep} />
+                    <View style={styles.statItem}>
+                        <Text style={[styles.statNum, { color: '#ef4444' }]}>₹{user?.balance || 0}</Text>
+                        <Text style={styles.statLbl}>Udhari</Text>
                     </View>
 
-                    <View style={styles.verticalLine} />
+                </View>
 
-                    <View style={styles.statBlock}>
-                        <View style={[styles.statIcon, { backgroundColor: '#dcfce7' }]}>
-                            <Ionicons name="wallet-outline" size={22} color="#10b981" />
+                {/* ── SETTINGS SECTION ── */}
+                <Text style={styles.sectionLabel}>{t('app_settings')}</Text>
+                <View style={styles.listCard}>
+                    <View style={styles.languageSection}>
+                        <View style={styles.languageHeader}>
+                            <View style={[styles.listIconBox, { backgroundColor: '#fdf2f8' }]}>
+                                <Ionicons name="language-outline" size={19} color="#db2777" />
+                            </View>
+                            <Text style={styles.listLabel}>{t('language')}</Text>
                         </View>
-                        <Text style={styles.statValue}>₹{USER_STATS.totalSpent}</Text>
-                        <Text style={styles.statLabel}>Spent</Text>
+                        <View style={styles.langGrid}>
+                            {LANGUAGES.map((lang) => (
+                                <TouchableOpacity
+                                    key={lang.id}
+                                    style={[
+                                        styles.langBtn,
+                                        customerLanguage === lang.id && styles.langBtnActive
+                                    ]}
+                                    onPress={() => changeLanguage(lang.id, 'customer')}
+                                >
+                                    <Text style={[
+                                        styles.langBtnText,
+                                        customerLanguage === lang.id && styles.langBtnTextActive
+                                    ]}>{lang.label}</Text>
+                                    <Text style={styles.langBtnSub}>{lang.sub}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                     </View>
                 </View>
 
-                {/* SETTINGS */}
-                <View style={styles.menuContainer}>
-                    <Text style={styles.sectionHeader}>Settings</Text>
-
-                    {INFO_ITEMS.map((item, index) => (
+                <View style={styles.listCard}>
+                    {INFO_ITEMS.map((item, i) => (
                         <TouchableOpacity
-                            key={index}
-                            style={[
-                                styles.menuItem,
-                                index === INFO_ITEMS.length - 1 && { borderBottomWidth: 0 }
-                            ]}
-                            activeOpacity={0.6}
+                            key={i}
+                            style={[styles.listRow, i < INFO_ITEMS.length - 1 && styles.listRowBorder]}
+                            activeOpacity={0.55}
+                            onPress={() => item.screen && navigation.navigate(item.screen)}
                         >
-                            <View style={styles.menuLeft}>
-                                <View style={styles.menuIconBox}>
-                                    <Ionicons name={item.icon} size={20} color="#374151" />
-                                </View>
-                                <Text style={styles.menuLabel}>{item.label}</Text>
+                            <View style={[styles.listIconBox, { backgroundColor: item.bg }]}>
+                                <Ionicons name={item.icon} size={19} color={item.color} />
                             </View>
-
-                            <Ionicons
-                                name="chevron-forward"
-                                size={18}
-                                color="#9ca3af"
-                            />
+                            <Text style={styles.listLabel}>{item.label}</Text>
+                            <Ionicons name="chevron-forward" size={18} color="#c4c9d4" />
                         </TouchableOpacity>
                     ))}
+                </View>
 
-                    <TouchableOpacity
-                        style={[styles.menuItem, { borderBottomWidth: 0, marginTop: 10 }]}
-                        onPress={() => navigation.navigate('Shopkeeper')}
-                        activeOpacity={0.6}
-                    >
-                        <View style={styles.menuLeft}>
-                            <View style={[styles.menuIconBox, { backgroundColor: '#dcfce7' }]}>
-                                <Ionicons name="storefront" size={20} color="#166534" />
-                            </View>
-                            <Text style={[styles.menuLabel, { color: '#166534', fontWeight: '700' }]}>Switch to Shopkeeper</Text>
+
+
+                {/* ── LOGOUT ── */}
+                <View style={styles.listCard}>
+                    <TouchableOpacity style={styles.listRow} onPress={handleLogout} activeOpacity={0.55}>
+                        <View style={[styles.listIconBox, { backgroundColor: '#fee2e2' }]}>
+                            <Ionicons name="log-out-outline" size={19} color="#ef4444" />
                         </View>
-                        <Ionicons name="chevron-forward" size={18} color="#166534" />
+                        <Text style={[styles.listLabel, { color: '#ef4444' }]}>{t('logout')}</Text>
+                        <Ionicons name="chevron-forward" size={18} color="#fca5a5" />
                     </TouchableOpacity>
                 </View>
 
-                {/* LOGOUT */}
-                <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.7} onPress={handleLogout}>
-                    <Text style={styles.logoutText}>Log Out</Text>
-                </TouchableOpacity>
+                <Text style={styles.version}>ApnaDukan v1.0.0</Text>
 
-                <View style={{ height: 80 }} />
+                <View style={{ height: 120 }} />
             </ScrollView>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f9fafb',
-    },
+    root: { flex: 1, backgroundColor: '#f4f6f8' },
 
-    /* HEADER */
-    headerContainer: {
+    /* ── HEADER ── */
+    topHeader: {
+        backgroundColor: '#042e23',
+        paddingBottom: 24,
         borderBottomLeftRadius: 28,
         borderBottomRightRadius: 28,
-        overflow: 'hidden',
-        elevation: 4,
+        // shadow
+        shadowColor: '#042e23',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 14,
+        elevation: 10,
     },
-    headerGradient: {
-        paddingTop: Platform.OS === 'android'
-            ? StatusBar.currentHeight + 20
-            : 60,
-        paddingBottom: 30,
+    headerContent: {
         paddingHorizontal: 20,
-        alignItems: 'center',
+        paddingTop: Platform.OS === 'android' ? 16 : 12,
     },
-    headerTitle: {
-        fontSize: 20,
+    screenTitle: {
+        fontSize: 13,
         fontWeight: '700',
-        color: '#fff',
-        marginBottom: 18,
+        color: '#86efac',
+        letterSpacing: 2,
+        textTransform: 'uppercase',
+        marginBottom: 20,
     },
-    profileSection: {
+    profileRow: {
+        flexDirection: 'row',
         alignItems: 'center',
+        gap: 14,
     },
-    avatarContainer: {
-        position: 'relative',
-        marginBottom: 12,
-    },
+
+    // Avatar
+    avatarWrap: { position: 'relative' },
     avatar: {
-        width: 90,
-        height: 90,
-        borderRadius: 45,
-        borderWidth: 3,
-        borderColor: '#fff',
-        backgroundColor: '#f3f4f6',
+        width: 70,
+        height: 70,
+        borderRadius: 35,
+        backgroundColor: '#0d4a2e',
+        borderWidth: 2.5,
+        borderColor: '#86efac',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    editIconBtn: {
+    avatarText: { fontSize: 24, fontWeight: '900', color: '#86efac' },
+    cameraTag: {
         position: 'absolute',
         bottom: 0,
         right: 0,
+        width: 22,
+        height: 22,
+        borderRadius: 11,
         backgroundColor: '#10b981',
-        width: 26,
-        height: 26,
-        borderRadius: 13,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 2,
-        borderColor: '#111827',
-    },
-    userName: {
-        fontSize: 22,
-        fontWeight: '700',
-        color: '#fff',
-    },
-    userEmail: {
-        fontSize: 14,
-        color: '#9ca3af',
-        marginTop: 4,
-    },
-    userPhone: {
-        fontSize: 14,
-        color: '#d1d5db',
-        marginTop: 2,
+        borderColor: '#042e23',
     },
 
-    /* CONTENT */
-    scrollContent: {
-        paddingHorizontal: 20,
-        paddingTop: 20,
-    },
+    // Info
+    profileInfo: { flex: 1 },
+    profileName: { fontSize: 19, fontWeight: '800', color: '#fff', marginBottom: 3, letterSpacing: -0.3 },
+    profilePhone: { fontSize: 13, color: '#a7f3d0', fontWeight: '600', marginBottom: 2 },
+    profileEmail: { fontSize: 12, color: '#5a8a72', fontWeight: '500' },
 
-    /* STATS */
-    statsContainer: {
-        flexDirection: 'row',
-        backgroundColor: '#fff',
-        borderRadius: 18,
-        paddingVertical: 12,
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        marginBottom: 15, // Reduced from 25
-        elevation: 2,
-    },
-    statBlock: {
-        alignItems: 'center',
-        width: '40%',
-    },
-    statIcon: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    statValue: {
-        fontSize: 18,
-        fontWeight: '700',
-        marginTop: 8,
-        color: '#111827',
-    },
-    statLabel: {
-        fontSize: 12,
-        color: '#6b7280',
-        marginTop: 2,
-    },
-    verticalLine: {
-        width: 1,
-        height: 40,
-        backgroundColor: '#f3f4f6',
-    },
-
-    /* MENU */
-    menuContainer: {
-        backgroundColor: '#fff',
-        borderRadius: 18,
-        padding: 20,
-        marginBottom: 15, // Reduced from 25
-        elevation: 2,
-    },
-    sectionHeader: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#111827',
-        marginBottom: 10,
-    },
-    menuItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: 14,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f3f4f6',
-    },
-    menuLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    menuIconBox: {
+    editCircle: {
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: '#f3f4f6',
+        backgroundColor: '#86efac',
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 14,
-    },
-    menuLabel: {
-        fontSize: 15,
-        color: '#374151',
-        fontWeight: '500',
     },
 
-    /* LOGOUT */
-    logoutBtn: {
-        backgroundColor: '#fee2e2',
-        borderRadius: 14,
-        paddingVertical: 14, // Slightly smaller
-        alignItems: 'center',
-        width: "50%",
-        marginRight: "25%",
-        marginLeft: "25%",
+    /* ── SCROLL ── */
+    scroll: { flex: 1 },
+    scrollContent: { paddingHorizontal: 16, paddingTop: 20 },
+
+    /* ── STAT STRIP ── */
+    statStrip: {
+        flexDirection: 'row',
+        backgroundColor: '#fff',
+        borderRadius: 18,
+        paddingVertical: 18,
+        marginBottom: 22,
+        // shadow
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.07,
+        shadowRadius: 8,
+        elevation: 3,
     },
-    logoutText: {
-        fontSize: 16,
+    statItem: { flex: 1, alignItems: 'center' },
+    statNum: { fontSize: 20, fontWeight: '900', color: '#111827', marginBottom: 3 },
+    statLbl: { fontSize: 11, color: '#9ca3af', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+    statSep: { width: 1, height: 36, backgroundColor: '#f3f4f6', alignSelf: 'center' },
+
+    /* ── SECTION LABEL ── */
+    sectionLabel: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#9ca3af',
+        textTransform: 'uppercase',
+        letterSpacing: 1.5,
+        marginBottom: 8,
+        marginLeft: 4,
+    },
+
+    /* ── LIST CARD ── */
+    listCard: {
+        backgroundColor: '#fff',
+        borderRadius: 18,
+        marginBottom: 12,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        elevation: 2,
+    },
+    listRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 15,
+        gap: 13,
+    },
+    listRowBorder: { borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
+    listIconBox: {
+        width: 40,
+        height: 40,
+        borderRadius: 13,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    listLabel: {
+        flex: 1,
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#1f2937',
+    },
+    listSub: { fontSize: 12, color: '#9ca3af', fontWeight: '500', marginTop: 1 },
+
+    /* ── LANGUAGE SECTION ── */
+    languageSection: {
+        padding: 16,
+    },
+    languageHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 13,
+        marginBottom: 16,
+    },
+    langGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    langBtn: {
+        flex: 1,
+        minWidth: '45%',
+        paddingVertical: 12,
+        paddingHorizontal: 8,
+        borderRadius: 12,
+        borderWidth: 1.5,
+        borderColor: '#f1f5f9',
+        alignItems: 'center',
+        backgroundColor: '#f8fafc',
+    },
+    langBtnActive: {
+        borderColor: '#10b981',
+        backgroundColor: '#ecfdf5',
+    },
+    langBtnText: {
+        fontSize: 15,
         fontWeight: '700',
-        color: '#ef4444',
+        color: '#475569',
+    },
+    langBtnTextActive: {
+        color: '#047857',
+    },
+    langBtnSub: {
+        fontSize: 10,
+        color: '#94a3b8',
+        fontWeight: '500',
+        marginTop: 2,
+    },
+
+    /* ── VERSION ── */
+    version: {
+        textAlign: 'center',
+        fontSize: 12,
+        color: '#c4c9d4',
+        fontWeight: '500',
+        marginTop: 8,
     },
 });
-
-

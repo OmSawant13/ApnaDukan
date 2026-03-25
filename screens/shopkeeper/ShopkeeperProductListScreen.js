@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
     View,
     Text,
@@ -7,30 +7,43 @@ import {
     TouchableOpacity,
     Image,
     Switch,
+    Alert,
+    Dimensions,
+    Modal,
+    Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useProducts } from '../../context/ProductContext';
+import { useShopLanguage } from '../../context/LanguageContext';
 
 /* -------------------------------- Product Row -------------------------------- */
 
-const ProductRow = ({ item, incrementStock, decrementStock, toggleStock, onPress }) => {
+const ProductRow = ({ item, incrementStock, decrementStock, toggleStock, onPress, onLongPress, t, translateProduct }) => {
     return (
         <TouchableOpacity
             activeOpacity={0.9}
             onPress={onPress}
+            onLongPress={onLongPress}
             style={[styles.card, !item.stock && styles.cardDisabled]}
         >
             {/* Left: Product Image */}
-            <Image source={item.image} style={[styles.img, !item.stock && { opacity: 0.5 }]} />
+            <View>
+                <Image source={item.image} style={[styles.img, !item.stock && { opacity: 0.5 }]} />
+                {item.isFeatured && (
+                    <View style={styles.featuredBadge}>
+                        <Ionicons name="star" size={12} color="#fff" />
+                    </View>
+                )}
+            </View>
 
             {/* Center: Product Info */}
             <View style={styles.info}>
-                <Text style={[styles.name, !item.stock && { color: '#9CA3AF' }]}>{item.name}</Text>
-                <Text style={styles.subtitle}>{item.subtitle || item.unit}</Text>
+                <Text style={[styles.name, !item.stock && { color: '#9CA3AF' }]}>{translateProduct(item.name)}</Text>
+                <Text style={styles.subtitle}>{item.subtitle || t(item.unit) || item.unit}</Text>
                 {!item.stock && (
                     <View style={styles.outOfStockBadge}>
-                        <Text style={styles.outOfStockText}>Out of Stock</Text>
+                        <Text style={styles.outOfStockText}>{t('out_of_stock')}</Text>
                     </View>
                 )}
             </View>
@@ -46,7 +59,7 @@ const ProductRow = ({ item, incrementStock, decrementStock, toggleStock, onPress
                         ios_backgroundColor="#3e3e3e"
                         onValueChange={() => toggleStock(item.id)}
                         value={item.stock}
-                        style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }} // Make it slightly smaller
+                        style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
                     />
                 </View>
 
@@ -78,7 +91,62 @@ const ProductRow = ({ item, incrementStock, decrementStock, toggleStock, onPress
 
 export default function ShopkeeperProductListScreen({ route, navigation }) {
     const { categoryId, categoryName, categoryType } = route.params;
-    const { products, incrementStock, decrementStock, toggleStock } = useProducts();
+    const { products, incrementStock, decrementStock, toggleStock, deleteProduct, updateProduct } = useProducts();
+    const { t, translateProduct, bulkTranslate, currentLanguage } = useShopLanguage();
+
+    // AI Translation Magic - Trigger bulk translation when data or language changes
+    React.useEffect(() => {
+        if (products.length > 0) {
+            const currentCategoryProducts = products.filter(p => p.categoryId === categoryId);
+            const productNames = currentCategoryProducts.map(p => p.name);
+            if (productNames.length > 0) {
+                bulkTranslate(productNames);
+            }
+        }
+    }, [products, categoryId, currentLanguage]);
+
+    const [selectedProduct, setSelectedProduct] = React.useState(null);
+    const [isBottomSheetVisible, setIsBottomSheetVisible] = React.useState(false);
+
+    const handleLongPress = (product) => {
+        setSelectedProduct(product);
+        setIsBottomSheetVisible(true);
+    };
+
+    const closeBottomSheet = () => {
+        setIsBottomSheetVisible(false);
+        setSelectedProduct(null);
+    };
+
+    const handleAction = (action) => {
+        if (!selectedProduct) return;
+
+        if (action === 'feature') {
+            updateProduct(selectedProduct.id, { isFeatured: !selectedProduct.isFeatured });
+            closeBottomSheet();
+        } else if (action === 'delete') {
+            closeBottomSheet();
+            // Delay slightly to let the sheet close before showing the second confirmation alert
+            setTimeout(() => {
+                handleDeleteProduct(selectedProduct);
+            }, 300);
+        }
+    };
+
+    const handleDeleteProduct = (product) => {
+        Alert.alert(
+            t('delete_category') === 'Delete Category' ? 'Delete Product' : (t('delete') + ' ' + t('products')),
+            (t('delete_category_confirm') === 'Delete this category and all its products?' ? `Are you sure you want to delete "${product.name}"?` : t('delete_category_confirm')),
+            [
+                { text: t('cancel') || 'Cancel', style: 'cancel' },
+                {
+                    text: t('delete'),
+                    style: 'destructive',
+                    onPress: () => deleteProduct(product.id, categoryId)
+                }
+            ]
+        );
+    };
 
     const categoryProducts = products.filter(
         p => p.categoryId === categoryId
@@ -95,7 +163,13 @@ export default function ShopkeeperProductListScreen({ route, navigation }) {
                     <Ionicons name="arrow-back" size={22} color="#111827" />
                 </TouchableOpacity>
 
-                <Text style={styles.title}>{categoryName}</Text>
+                <Text
+                    style={styles.title}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                >
+                    {translateProduct(categoryName)}
+                </Text>
 
                 <TouchableOpacity
                     style={styles.addBtn}
@@ -113,7 +187,7 @@ export default function ShopkeeperProductListScreen({ route, navigation }) {
             {/* Product List */}
             <FlatList
                 data={categoryProducts}
-                keyExtractor={item => item.id}
+                keyExtractor={(item, index) => (item.id || item._id || index).toString()}
                 renderItem={({ item }) => (
                     <ProductRow
                         item={item}
@@ -121,6 +195,9 @@ export default function ShopkeeperProductListScreen({ route, navigation }) {
                         decrementStock={decrementStock}
                         toggleStock={toggleStock}
                         onPress={() => navigation.navigate('ShopkeeperProductDetails', { item })}
+                        onLongPress={() => handleLongPress(item)}
+                        t={t}
+                        translateProduct={translateProduct}
                     />
                 )}
                 contentContainerStyle={styles.list}
@@ -128,13 +205,65 @@ export default function ShopkeeperProductListScreen({ route, navigation }) {
                 ListEmptyComponent={
                     <View style={styles.empty}>
                         <Ionicons name="cube-outline" size={42} color="#D1D5DB" />
-                        <Text style={styles.emptyText}>No products yet</Text>
+                        <Text style={styles.emptyText}>{t('no_products')}</Text>
                         <Text style={styles.subText}>
-                            Tap + to add your first product
+                            {t('tap_to_add_product')}
                         </Text>
                     </View>
                 }
             />
+
+            {/* Premium Bottom Sheet for Quick Actions */}
+            <Modal
+                visible={isBottomSheetVisible}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={closeBottomSheet}
+            >
+                <Pressable style={styles.modalOverlay} onPress={closeBottomSheet}>
+                    <View style={styles.bottomSheetContainer}>
+                        <View style={styles.bottomSheetHeader}>
+                            <View style={styles.dragHandle} />
+                            <Text style={styles.bottomSheetTitle}>{translateProduct(selectedProduct?.name)}</Text>
+                        </View>
+
+                        <View style={styles.bottomSheetContent}>
+                            <TouchableOpacity
+                                style={styles.actionButton}
+                                onPress={() => handleAction('feature')}
+                            >
+                                <View style={[styles.actionIconContainer, { backgroundColor: '#FEF3C7' }]}>
+                                    <Ionicons
+                                        name={selectedProduct?.isFeatured ? "star" : "star-outline"}
+                                        size={24}
+                                        color="#F59E0B"
+                                    />
+                                </View>
+                                <Text style={styles.actionText}>
+                                    {selectedProduct?.isFeatured ? t('remove_featured') : t('add_featured')}
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.actionButton}
+                                onPress={() => handleAction('delete')}
+                            >
+                                <View style={[styles.actionIconContainer, { backgroundColor: '#FEE2E2' }]}>
+                                    <Ionicons name="trash-outline" size={24} color="#EF4444" />
+                                </View>
+                                <Text style={[styles.actionText, { color: '#EF4444' }]}>{t('delete_category') === 'Delete Category' ? 'Delete Product' : (t('delete') + ' ' + t('products'))}</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.actionButton, styles.cancelButton]}
+                                onPress={closeBottomSheet}
+                            >
+                                <Text style={styles.cancelText}>{t('cancel') || 'Cancel'}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </Pressable>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -151,12 +280,10 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between', // Push Add Button to right
-        paddingHorizontal: 24,
-        paddingTop: 20,
-        paddingBottom: 24,
-        backgroundColor: '#F9FAFB', // Match container
-        // Removed border to match Inventory
+        justifyContent: 'space-between',
+        paddingHorizontal: 16, // Reduced from 24
+        height: 60, // Fixed height
+        backgroundColor: '#F9FAFB',
     },
     headerLeft: {
         flexDirection: 'row',
@@ -164,13 +291,12 @@ const styles = StyleSheet.create({
         gap: 16,
     },
     backBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         backgroundColor: '#fff',
         alignItems: 'center',
         justifyContent: 'center',
-        // Soft Shadow
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
@@ -178,14 +304,17 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     title: {
-        fontSize: 26, // Larger title
-        fontWeight: '900',
+        fontSize: 22, // Smaller than original 26, but visible
+        fontWeight: '900', // Restored heavy weight
         color: '#111827',
+        flex: 1,
+        textAlign: 'center',
+        marginHorizontal: 10,
     },
     addBtn: {
-        width: 52,
-        height: 52,
-        borderRadius: 26,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         backgroundColor: '#111827',
         alignItems: 'center',
         justifyContent: 'center',
@@ -218,6 +347,19 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         backgroundColor: '#F3F4F6',
         marginRight: 14,
+    },
+    featuredBadge: {
+        position: 'absolute',
+        top: -4,
+        right: 10,
+        backgroundColor: '#F59E0B',
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: '#fff',
     },
 
     /* Info */
@@ -310,5 +452,75 @@ const styles = StyleSheet.create({
         marginTop: 4,
         fontSize: 14,
         color: '#9CA3AF',
+    },
+
+    /* Bottom Sheet Styles */
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        justifyContent: 'flex-end',
+    },
+    bottomSheetContainer: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingBottom: 40,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 20,
+    },
+    bottomSheetHeader: {
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+    },
+    dragHandle: {
+        width: 40,
+        height: 4,
+        backgroundColor: '#E5E7EB',
+        borderRadius: 2,
+        marginBottom: 12,
+    },
+    bottomSheetTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#111827',
+    },
+    bottomSheetContent: {
+        padding: 24,
+    },
+    actionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 8,
+        borderRadius: 16,
+        marginBottom: 8,
+    },
+    actionIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 16,
+    },
+    actionText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#1F2937',
+    },
+    cancelButton: {
+        marginTop: 8,
+        justifyContent: 'center',
+        backgroundColor: '#F3F4F6',
+    },
+    cancelText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#6B7280',
     },
 });
