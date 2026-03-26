@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     StyleSheet,
@@ -9,12 +9,15 @@ import {
     Image,
     Platform,
     TextInput,
+    KeyboardAvoidingView,
+    Keyboard,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useOrders } from '../context/OrderContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Alert } from 'react-native';
+
 
 const WeightProductDetailsScreen = ({ navigation, route }) => {
     // Get item from navigation params
@@ -34,8 +37,26 @@ const WeightProductDetailsScreen = ({ navigation, route }) => {
 
     // State
     const [isFavorite, setIsFavorite] = useState(false);
+    const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+    useEffect(() => {
+        const keyboardDidShowListener = Keyboard.addListener(
+            'keyboardDidShow',
+            () => setIsKeyboardVisible(true)
+        );
+        const keyboardDidHideListener = Keyboard.addListener(
+            'keyboardDidHide',
+            () => setIsKeyboardVisible(false)
+        );
+
+        return () => {
+            keyboardDidShowListener.remove();
+            keyboardDidHideListener.remove();
+        };
+    }, []);
 
     // --- Calculator Logic ---
+
     const ratePerKg = product.price; // Simplified rate assumption
 
     const [customWeight, setCustomWeight] = useState('1000'); // in grams
@@ -83,7 +104,13 @@ const WeightProductDetailsScreen = ({ navigation, route }) => {
     const toggleFavorite = () => setIsFavorite(!isFavorite);
 
     return (
-        <View style={styles.container}>
+        <KeyboardAvoidingView 
+            style={{ flex: 1 }} 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -100}
+        >
+            <View style={styles.container}>
+
             <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
 
             {/* Header */}
@@ -108,25 +135,28 @@ const WeightProductDetailsScreen = ({ navigation, route }) => {
             </SafeAreaView>
 
             <View style={styles.staticContent}>
-                {/* Product Image Section */}
-                <View style={styles.imageSection}>
-                    {/* Simplified Image Logic */}
-                    <Image
-                        source={require('../assets/Panipuri.jpeg')}
-                        style={styles.productImage}
-                        resizeMode="cover"
-                    />
-                    <View style={styles.discountBadge}>
-                        <LinearGradient
-                            colors={['#f59e0b', '#ef4444']}
-                            style={styles.discountGradient}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                        >
-                            <Text style={styles.discountText}>{t('offer')}</Text>
-                        </LinearGradient>
+                {/* Product Image Section - Hidden when typing */}
+                {!isKeyboardVisible && (
+                    <View style={styles.imageSection}>
+                        {/* Simplified Image Logic */}
+                        <Image
+                            source={require('../assets/Panipuri.jpeg')}
+                            style={styles.productImage}
+                            resizeMode="cover"
+                        />
+                        <View style={styles.discountBadge}>
+                            <LinearGradient
+                                colors={['#f59e0b', '#ef4444']}
+                                style={styles.discountGradient}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                            >
+                                <Text style={styles.discountText}>{t('offer')}</Text>
+                            </LinearGradient>
+                        </View>
                     </View>
-                </View>
+                )}
+
 
                 {/* Product Info */}
                 <View style={styles.detailsContainer}>
@@ -211,12 +241,15 @@ const WeightProductDetailsScreen = ({ navigation, route }) => {
                         </TouchableOpacity>
                     </View>
 
-                    <View style={{ height: 40 }} />
+                    <View style={{ height: 200 }} />
                 </View>
             </View>
         </View>
+    </KeyboardAvoidingView>
     );
 };
+
+
 
 const styles = StyleSheet.create({
     container: {

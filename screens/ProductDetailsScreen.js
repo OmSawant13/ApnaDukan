@@ -352,8 +352,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 15,
-        marginTop: 30,
+        marginTop: 60,
     },
+
 
     quantitySelector: {
         flex: 1,

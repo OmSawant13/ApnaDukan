@@ -12,6 +12,18 @@ export const ShopProvider = ({ children }) => {
     const [selectedShop, setSelectedShop] = useState(null);
     const [shops, setShops] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [prevUserId, setPrevUserId] = useState(null);
+
+    // Sync state reset during render phase to prevent auth flash
+    if (user && user._id !== prevUserId) {
+        setPrevUserId(user._id);
+        setLoading(true);
+        setSelectedShop(null);
+    } else if (!user && prevUserId !== null) {
+        setPrevUserId(null);
+        setLoading(true);
+        setSelectedShop(null);
+    }
 
     const fetchShops = async () => {
         try {
@@ -33,24 +45,25 @@ export const ShopProvider = ({ children }) => {
 
     useEffect(() => {
         const loadInitialData = async () => {
+            // Guard: Don't finish loading if we don't have a definitive user status yet
+            if (user === undefined) return; 
+
             try {
+                setLoading(true);
                 // 1. Fetch all shops first
                 const allShops = await fetchShops();
-                if (!allShops) return;
-
-                // 2. Determine selected shop
-                if (user?.role === 'shopkeeper') {
+                
+                if (user?.role === 'shopkeeper' && allShops) {
                     // Auto-select the shop owned by this shopkeeper
                     const myShop = allShops.find(s => s.ownerId === user._id);
                     if (myShop) {
                         setSelectedShop(myShop);
-                        return;
+                    } else {
+                        setSelectedShop(null);
                     }
+                } else {
+                    setSelectedShop(null);
                 }
-
-                // For customers, we now want them to see the list every time.
-                // So we don't auto-load from AsyncStorage here.
-                setSelectedShop(null);
             } catch (err) {
                 console.error('Failed to load shops:', err);
             } finally {

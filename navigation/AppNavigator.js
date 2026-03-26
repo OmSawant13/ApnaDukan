@@ -145,9 +145,19 @@ export default function AppNavigator() {
     const { user, loading: authLoading } = useAuth();
     const { selectedShop, loading: shopLoading } = useShop();
 
-    if (authLoading || shopLoading) {
+    // 1. Critical Guard: Wait for Auth to settle first
+    if (authLoading) {
         return <View style={{ flex: 1, backgroundColor: '#fff' }} />;
     }
+
+    // 2. Shopkeeper Guard: If user is shopkeeper, wait for SHOP data to settle
+    // This prevents the "ShopRegistration" flash when selectedShop is still null but being fetched.
+    if (user?.role === 'shopkeeper' && shopLoading) {
+        return <View style={{ flex: 1, backgroundColor: '#fff' }} />;
+    }
+
+    // 3. Customer Guard: If user is customer, they need ShopSelection screen (always)
+    // We don't necessarily need to wait for shopLoading here if ShopSelection screen handles its own list loading.
 
     const initialRoute = !user 
         ? 'Auth' 

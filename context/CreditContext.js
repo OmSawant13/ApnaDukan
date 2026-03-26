@@ -8,14 +8,18 @@ export const useCredit = () => useContext(CreditContext);
 
 import { API_URL } from '../config';
 
+import { useSocket } from './SocketContext';
+
 export const CreditProvider = ({ children }) => {
     const [customers, setCustomers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const { selectedShop } = useShop();
+    const { socket } = useSocket();
 
     // Fetch All Customers
     const fetchCustomers = async () => {
+
         try {
             if (customers.length === 0) {
                 setLoading(true);
@@ -103,9 +107,11 @@ export const CreditProvider = ({ children }) => {
                 throw new Error(updatedCustomer.error || 'Failed');
             }
 
-            setCustomers(prev => prev.map(c => c._id === customerId ? updatedCustomer : c));
+            // Refresh the entire list to ensure new users and updated balances reflect everywhere
+            await fetchCustomers();
             return true;
         } catch (err) {
+
             console.error('Order Credit Error:', err);
             Alert.alert('Notice', err.message || 'Transaction could not be completed');
             return false;
@@ -116,7 +122,20 @@ export const CreditProvider = ({ children }) => {
 
     useEffect(() => {
         fetchCustomers();
-    }, [selectedShop]);
+
+        // [REAL-TIME SYNC] Listen for updates from other devices/screens
+        if (socket) {
+            socket.on('credit_update', (data) => {
+                console.log('⚡ [SYNC] Credit update received via Socket:', data);
+                fetchCustomers();
+            });
+        }
+
+        return () => {
+            if (socket) socket.off('credit_update');
+        };
+    }, [selectedShop, socket]);
+
 
     return (
         <CreditContext.Provider value={{

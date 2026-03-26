@@ -107,7 +107,17 @@ router.post('/from-order', async (req, res) => {
             await customer.save();
         }
 
+        // 5. Emit Socket Event for Real-Time Sync
+        if (req.io) {
+            req.io.emit('credit_update', { 
+                customerId, 
+                shopId: order.shopId,
+                amount: Number(amount)
+            });
+        }
+
         res.json(customer || account);
+
     } catch (err) {
         console.error('❌ from-order Error:', err);
         res.status(400).json({ error: err.message });
