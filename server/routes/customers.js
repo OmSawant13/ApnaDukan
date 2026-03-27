@@ -135,6 +135,49 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+// POST Signup
+router.post('/', async (req, res) => {
+    try {
+        const { name, phone, password, role, profilePic } = req.body;
+        
+        // Basic Check
+        if (!name || !phone || !password) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
 
+        // Check if user exists
+        const existing = await Customer.findOne({ phone });
+        if (existing) {
+            return res.status(400).json({ error: 'Phone number already registered' });
+        }
+
+        const customer = new Customer({ name, phone, password, role, profilePic });
+        await customer.save();
+        
+        res.status(201).json(customer);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// POST Login
+router.post('/login', async (req, res) => {
+    try {
+        const { phone, password } = req.body;
+
+        if (!phone || !password) {
+            return res.status(400).json({ error: 'Phone and password required' });
+        }
+
+        const user = await Customer.findOne({ phone, password });
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid phone or password' });
+        }
+
+        res.json(user);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 module.exports = router;
