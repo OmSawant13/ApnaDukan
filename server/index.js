@@ -38,7 +38,7 @@ mongoose.connect(MONGO_URI)
 
 // Routes
 app.get('/', (req, res) => {
-    res.send('API is Running...');
+    res.send('API is Running v1.1 (Auth Fix)...');
 });
 
 // Import Routes
