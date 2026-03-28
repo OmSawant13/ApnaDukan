@@ -29,7 +29,7 @@
         "expo-build-properties",
         {
           "android": {
-            "kotlinVersion": "2.0.20"
+            "kotlinVersion": "2.0.21"
           }
         }
       ]
@@ -41,6 +41,14 @@
       "eas": {
         "projectId": "964a5f88-2005-46e3-a983-a1402ef61d20"
       }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/964a5f88-2005-46e3-a983-a1402ef61d20",
+      "enabled": true,
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }

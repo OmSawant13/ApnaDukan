@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { API_URL } from '../config';
+import LoadingScreen from './LoadingScreen';
 
 const { width } = Dimensions.get('window');
 
@@ -200,7 +201,7 @@ const ShopSelectionScreen = ({ navigation }) => {
 
                     <View style={styles.listContent}>
                         {shopsLoading && !refreshing ? (
-                            <View style={styles.center}><ActivityIndicator color="#FFB800" size="large" /></View>
+                            <LoadingScreen />
                         ) : filteredShops.length > 0 ? (
                             filteredShops.map((item, index) => renderShopItem({ item, index }))
                         ) : (

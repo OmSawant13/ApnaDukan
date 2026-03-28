@@ -1,0 +1,10 @@
+node_modules
+.git
+server
+dist
+build
+.expo
+.next
+.DS_Store
+*.apk
+*.aab
