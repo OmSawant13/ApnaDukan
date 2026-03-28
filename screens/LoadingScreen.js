@@ -20,7 +20,7 @@ const LoadingScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#ffffff', // Match app.json splash
+        backgroundColor: '#111827', // Match splash-background in app.json and user photo
         justifyContent: 'center',
         alignItems: 'center',
     },

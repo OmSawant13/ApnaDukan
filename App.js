@@ -15,6 +15,13 @@ import { CreditProvider } from './context/CreditContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { ShopProvider } from './context/ShopContext';
 
+import * as SplashScreen from 'expo-splash-screen';
+
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync().catch(() => {
+  /* reloading the app might cause some security errors, ignore the warning */
+});
+
 export default function App() {
   return (
     <SafeAreaProvider>

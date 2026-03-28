@@ -8,9 +8,15 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/ApnaDukan.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0a1c3b"
+      "backgroundColor": "#111827"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/964a5f88-2005-46e3-a983-a1402ef61d20"
     },
     "ios": {
       "supportsTablet": true
@@ -18,7 +24,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0a1c3b"
+        "backgroundColor": "#111827"
       },
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "pan",
@@ -32,7 +38,8 @@
             "kotlinVersion": "2.0.20"
           }
         }
-      ]
+      ],
+      "expo-splash-screen"
     ],
     "web": {
       "favicon": "./assets/favicon.png"

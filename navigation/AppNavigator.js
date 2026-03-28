@@ -142,13 +142,18 @@ const AppStack = () => {
 };
 
 
+import * as SplashScreen from 'expo-splash-screen';
+
 export default function AppNavigator() {
     const [minLoading, setMinLoading] = React.useState(true);
     const { user, loading: authLoading } = useAuth();
     const { selectedShop, loading: shopLoading } = useShop();
 
     React.useEffect(() => {
-        const timer = setTimeout(() => setMinLoading(false), 3000);
+        const timer = setTimeout(() => {
+            setMinLoading(false);
+            SplashScreen.hideAsync().catch(() => {});
+        }, 3000);
         return () => clearTimeout(timer);
     }, []);
 
