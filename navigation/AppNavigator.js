@@ -142,6 +142,7 @@ const AppStack = () => {
 };
 
 
+export default function AppNavigator() {
     const [minLoading, setMinLoading] = React.useState(true);
     const { user, loading: authLoading } = useAuth();
     const { selectedShop, loading: shopLoading } = useShop();
