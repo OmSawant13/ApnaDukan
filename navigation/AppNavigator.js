@@ -153,20 +153,17 @@ const AppStack = () => {
 import * as SplashScreen from 'expo-splash-screen';
 
 export default function AppNavigator() {
-    const [minLoading, setMinLoading] = React.useState(true);
     const { user, loading: authLoading } = useAuth();
     const { selectedShop, loading: shopLoading } = useShop();
 
     React.useEffect(() => {
-        const timer = setTimeout(() => {
-            setMinLoading(false);
+        if (!authLoading && !shopLoading) {
             SplashScreen.hideAsync().catch(() => { });
-        }, 5000);
-        return () => clearTimeout(timer);
-    }, []);
+        }
+    }, [authLoading, shopLoading]);
 
-    // 1. Critical Guard: Wait for Auth + Min Timer
-    if (authLoading || minLoading) {
+    // 1. Critical Guard: Wait for Auth
+    if (authLoading) {
         return <LoadingScreen />;
     }
 
