@@ -142,12 +142,17 @@ const AppStack = () => {
 };
 
 
-export default function AppNavigator() {
+    const [minLoading, setMinLoading] = React.useState(true);
     const { user, loading: authLoading } = useAuth();
     const { selectedShop, loading: shopLoading } = useShop();
 
-    // 1. Critical Guard: Wait for Auth to settle first
-    if (authLoading) {
+    React.useEffect(() => {
+        const timer = setTimeout(() => setMinLoading(false), 1500);
+        return () => clearTimeout(timer);
+    }, []);
+
+    // 1. Critical Guard: Wait for Auth + Min Timer
+    if (authLoading || minLoading) {
         return <LoadingScreen />;
     }
 
