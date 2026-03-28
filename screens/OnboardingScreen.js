@@ -65,7 +65,7 @@ const OnboardingScreen = ({ navigation }) => {
             navigation.replace('Login');
           }, 1000); // Wait 1 sec before nav
         }
-      }, 3000); // 3 Seconds per slide
+      }, 6000); // 6 Seconds per slide (Slowed down for visibility)
     }
     return () => clearInterval(interval);
   }, [currentIndex, isAutoSliding, slides.length, navigation]);

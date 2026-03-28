@@ -148,7 +148,7 @@ export default function AppNavigator() {
     const { selectedShop, loading: shopLoading } = useShop();
 
     React.useEffect(() => {
-        const timer = setTimeout(() => setMinLoading(false), 1500);
+        const timer = setTimeout(() => setMinLoading(false), 3000);
         return () => clearTimeout(timer);
     }, []);
 
