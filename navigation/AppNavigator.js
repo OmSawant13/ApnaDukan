@@ -153,7 +153,7 @@ export default function AppNavigator() {
         const timer = setTimeout(() => {
             setMinLoading(false);
             SplashScreen.hideAsync().catch(() => {});
-        }, 3000);
+        }, 5000);
         return () => clearTimeout(timer);
     }, []);
 
