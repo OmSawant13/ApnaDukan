@@ -3,6 +3,7 @@ import { View, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Screens
 import HomeScreen from '../screens/HomeScreen';
@@ -31,8 +32,15 @@ const { width } = Dimensions.get('window');
 const TAB_WIDTH = width * 0.6;
 
 function CustomTabBar({ state, descriptors, navigation }) {
+    const insets = useSafeAreaInsets();
+    
+    // Dynamic bottom spacing: 
+    // - On phones with buttons (insets.bottom == 0), we want ~20px offset.
+    // - On phones with gestures/notch (insets.bottom > 0), we use the inset + extra breathing room.
+    const dynamicBottom = insets.bottom > 0 ? insets.bottom + 10 : 25;
+
     return (
-        <View style={styles.wrapper}>
+        <View style={[styles.wrapper, { bottom: dynamicBottom }]}>
             <View style={styles.tabBar}>
                 {state.routes.map((route, index) => {
                     const isFocused = state.index === index;
@@ -152,7 +160,7 @@ export default function AppNavigator() {
     React.useEffect(() => {
         const timer = setTimeout(() => {
             setMinLoading(false);
-            SplashScreen.hideAsync().catch(() => {});
+            SplashScreen.hideAsync().catch(() => { });
         }, 5000);
         return () => clearTimeout(timer);
     }, []);
@@ -204,7 +212,6 @@ export default function AppNavigator() {
 const styles = StyleSheet.create({
     wrapper: {
         position: 'absolute',
-        bottom: 40,
         width: '100%',
         alignItems: 'center',
     },

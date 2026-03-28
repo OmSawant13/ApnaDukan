@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
         if (!shopId) return res.status(400).json({ error: 'Shop ID required' });
 
         const CreditAccount = require('../models/CreditAccount');
-        
+
         // 1. Get ALL users with role 'customer'
         const allCustomers = await Customer.find({ role: 'customer' });
 
@@ -57,14 +57,14 @@ router.post('/from-order', async (req, res) => {
             customer = await Customer.findById(customerId);
             if (!customer) {
                 console.log(`⚠️ [DEBUG] Legacy ID ${customerId} not found. Using Name Fallback.`);
-                customerId = null; 
+                customerId = null;
             }
         }
 
         if (!customerId && customerName) {
-            customer = await Customer.findOne({ 
-                name: new RegExp(`^${customerName.trim()}$`, 'i'), 
-                role: 'customer' 
+            customer = await Customer.findOne({
+                name: new RegExp(`^${customerName.trim()}$`, 'i'),
+                role: 'customer'
             });
 
             if (!customer) {
@@ -109,8 +109,8 @@ router.post('/from-order', async (req, res) => {
 
         // 5. Emit Socket Event for Real-Time Sync
         if (req.io) {
-            req.io.emit('credit_update', { 
-                customerId, 
+            req.io.emit('credit_update', {
+                customerId,
                 shopId: order.shopId,
                 amount: Number(amount)
             });
@@ -139,7 +139,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const { name, phone, password, role, profilePic } = req.body;
-        
+
         // Basic Check
         if (!name || !phone || !password) {
             return res.status(400).json({ error: 'Missing required fields' });
@@ -153,7 +153,7 @@ router.post('/', async (req, res) => {
 
         const customer = new Customer({ name, phone, password, role, profilePic });
         await customer.save();
-        
+
         res.status(201).json(customer);
     } catch (err) {
         res.status(400).json({ error: err.message });

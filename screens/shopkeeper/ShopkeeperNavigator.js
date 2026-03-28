@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShopLanguage } from '../../context/LanguageContext';
 
 const { width } = Dimensions.get('window');
@@ -16,8 +17,11 @@ import ShopkeeperProfileScreen from './ShopkeeperProfileScreen';
 const Tab = createBottomTabNavigator();
 
 function ShopkeeperTabBar({ state, descriptors, navigation }) {
+    const insets = useSafeAreaInsets();
+    const dynamicBottom = insets.bottom > 0 ? insets.bottom + 10 : 25;
+
     return (
-        <View style={styles.wrapper}>
+        <View style={[styles.wrapper, { bottom: dynamicBottom }]}>
             <View style={styles.tabBar}>
                 {state.routes.map((route, index) => {
                     const isFocused = state.index === index;
@@ -97,7 +101,6 @@ export default function ShopkeeperNavigator() {
 const styles = StyleSheet.create({
     wrapper: {
         position: 'absolute',
-        bottom: 40,
         width: '100%',
         alignItems: 'center',
     },

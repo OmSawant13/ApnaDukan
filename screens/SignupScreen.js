@@ -31,7 +31,7 @@ export default function SignupScreen({ navigation }) {
       'keyboardDidShow',
       () => {
         // Uniform scroll for any keyboard event
-        scrollViewRef.current?.scrollTo({ y: 190, animated: true });
+        scrollViewRef.current?.scrollTo({ y: 180, animated: true });
       }
     );
 
