@@ -23,7 +23,7 @@ const LoadingScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9F9F9', 
+        backgroundColor: '#FF69B4', // Bright Pink for Testing
         justifyContent: 'center',
         alignItems: 'center',
     },
