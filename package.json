@@ -24,7 +24,7 @@
     "expo-updates": "~29.0.16",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-native": "0.81.5",
+    "react-native": "0.76.9",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-reanimated": "~4.1.1",
     "react-native-reanimated-carousel": "^4.0.3",
@@ -38,5 +38,12 @@
   "private": true,
   "devDependencies": {
     "babel-preset-expo": "^54.0.10"
+  },
+  "expo": {
+    "install": {
+      "exclude": [
+        "react-native"
+      ]
+    }
   }
 }
