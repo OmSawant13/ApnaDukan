@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     View, Text, StyleSheet, StatusBar,
     TouchableOpacity, ScrollView, Alert, Platform,
@@ -15,6 +15,7 @@ export default function ShopkeeperProfileScreen({ navigation }) {
     const { orders, fetchOrders } = useOrders();
     const { t, changeLanguage, currentLanguage } = useShopLanguage();
     const { selectedShop, updateShopStatus } = useShop();
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Fetch orders on mount to get latest stats
     useEffect(() => {
@@ -35,15 +36,33 @@ export default function ShopkeeperProfileScreen({ navigation }) {
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
-                    text: t('delete_account'),
-                    style: 'destructive',
-                    onPress: () => {
-                        Alert.alert('Info', 'Account deletion request submitted. This feature is coming soon.');
-                    }
-                },
-            ]
-        );
-    };
+        text: t('delete_account'),
+        style: 'destructive',
+        onPress: async () => {
+            try {
+                setIsDeleting(true);
+                const { API_URL } = require('../../config');
+                const response = await fetch(`${API_URL}/customers/${user._id}`, {
+                    method: 'DELETE',
+                });
+
+                if (response.ok) {
+                    Alert.alert('Success', 'Your account and all associated data have been deleted.');
+                    logout(); // Log out and redirect
+                } else {
+                    const data = await response.json();
+                    Alert.alert('Error', data.error || 'Failed to delete account.');
+                }
+            } catch (err) {
+                console.error('Delete Account Error:', err);
+                Alert.alert('Error', 'Network error. Could not delete account.');
+            } finally {
+                setIsDeleting(false);
+            }
+        }
+    },
+]);
+};
 
     // Calculate Shop Statistics
     const totalOrders = orders.length;

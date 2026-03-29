@@ -1,6 +1,8 @@
 const router = require('express').Router();
 const Customer = require('../models/Customer');
 const Order = require('../models/Order');
+const Shop = require('../models/Shop');
+const Product = require('../models/Product');
 
 // GET ALL customers for THIS shop
 router.get('/', async (req, res) => {
@@ -176,6 +178,50 @@ router.post('/login', async (req, res) => {
 
         res.json(user);
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE Account (Cascading Delete)
+router.delete('/:id', async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const user = await Customer.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        console.log(`🗑️ [DELETE] Processing account deletion for: ${user.name} (${user.role})`);
+
+        if (user.role === 'shopkeeper') {
+            // 1. Find the shop owned by this user
+            const shop = await Shop.findOne({ ownerId: userId });
+            
+            if (shop) {
+                console.log(`   - Deleting Shop: ${shop.name}`);
+                
+                // 2. Delete all products belonging to this shop
+                const productDeleteResult = await Product.deleteMany({ shopId: shop._id });
+                console.log(`   - Deleted ${productDeleteResult.deletedCount} products`);
+
+                // 3. Delete the shop itself
+                await Shop.findByIdAndDelete(shop._id);
+            }
+        }
+
+        // 4. Delete associated CreditAccount if any (as a customer)
+        const CreditAccount = require('../models/CreditAccount');
+        await CreditAccount.deleteMany({ customerId: userId });
+
+        // 5. Finally, delete the customer
+        await Customer.findByIdAndDelete(userId);
+
+        console.log(`✅ [DELETE] Account and associated data removed successfully.`);
+        res.json({ message: 'Account and associated data deleted successfully' });
+
+    } catch (err) {
+        console.error('❌ Delete Account Error:', err);
         res.status(500).json({ error: err.message });
     }
 });
