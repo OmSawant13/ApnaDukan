@@ -28,6 +28,23 @@ export default function ShopkeeperProfileScreen({ navigation }) {
         ]);
     };
 
+    const handleDeleteAccount = () => {
+        Alert.alert(
+            t('delete_account'),
+            t('delete_account_confirm'),
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: t('delete_account'),
+                    style: 'destructive',
+                    onPress: () => {
+                        Alert.alert('Info', 'Account deletion request submitted. This feature is coming soon.');
+                    }
+                },
+            ]
+        );
+    };
+
     // Calculate Shop Statistics
     const totalOrders = orders.length;
     const totalRevenue = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
@@ -202,6 +219,17 @@ export default function ShopkeeperProfileScreen({ navigation }) {
                         </View>
                         <Text style={[styles.listLabel, { color: '#ef4444' }]}>{t('logout')}</Text>
                         <Ionicons name="chevron-forward" size={18} color="#fca5a5" />
+                    </TouchableOpacity>
+                </View>
+
+                {/* ── DELETE ACCOUNT ── */}
+                <View style={[styles.listCard, { marginTop: 8 }]}>
+                    <TouchableOpacity style={styles.listRow} onPress={handleDeleteAccount} activeOpacity={0.55}>
+                        <View style={[styles.listIconBox, { backgroundColor: '#ffe4e6' }]}>
+                            <Ionicons name="trash-outline" size={19} color="#e11d48" />
+                        </View>
+                        <Text style={[styles.listLabel, { color: '#e11d48' }]}>{t('delete_account')}</Text>
+                        <Ionicons name="chevron-forward" size={18} color="#fda4af" />
                     </TouchableOpacity>
                 </View>
 

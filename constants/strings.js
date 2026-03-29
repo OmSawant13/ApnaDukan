@@ -34,6 +34,8 @@ export const strings = {
         help_support: "Help & Support",
         privacy_policy: "Privacy Policy",
         balance: "Balance",
+        delete_account: "Delete Account",
+        delete_account_confirm: "Are you sure you want to delete your account? This action cannot be undone.",
 
         // Cart & Checkout
         my_cart: "My Cart",
@@ -255,6 +257,8 @@ export const strings = {
         help_support: "सहायता",
         privacy_policy: "गोपनीयता नीति",
         balance: "बाकी",
+        delete_account: "खाता हटाएं",
+        delete_account_confirm: "क्या आप वाकई अपना खाता हटाना चाहते हैं? यह क्रिया वापस नहीं ली जा सकती।",
 
         // Cart & Checkout
         my_cart: "मेरी टोकरी",
@@ -475,6 +479,8 @@ export const strings = {
         help_support: "मदत",
         privacy_policy: "गोपनीयता धोरण",
         balance: "शिल्लक",
+        delete_account: "खाते हटवा",
+        delete_account_confirm: "तुम्ही नक्की तुमचे खाते हटवू इच्छिता? ही कृती परत करता येणार नाही.",
 
         // Cart & Checkout
         my_cart: "माझी पिशवी",
@@ -695,6 +701,8 @@ export const strings = {
         help_support: "Madat chahiye?",
         privacy_policy: "Privacy Policy",
         balance: "Balance",
+        delete_account: "Account Delete karo",
+        delete_account_confirm: "Kya aap pakka account delete karna chahte ho? Ye wapas nahi aayega.",
 
         // Cart & Checkout
         my_cart: "Meri Cart",
